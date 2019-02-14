@@ -30,6 +30,10 @@ X.decomp <- function(X = NULL, coef.d = NULL, coef.h = setdiff(seq_len(ncol(X)),
 
 ### pre-allocate memory before executing loops
 
+### Ev. noch folgende Methoden:
+# - Batch-effect rotation (Wrappermethode für init.randrot und randrot)
+
+
 
 # ### set following methods (see also limma's "classes.R" file):
 # dim
@@ -55,54 +59,86 @@ X.decomp <- function(X = NULL, coef.d = NULL, coef.h = setdiff(seq_len(ncol(X)),
 ### We do not use annotation data here in order to avoid excessive copying of annotation data when the
 ### resampled data is executed (e.g. with lmFit or ComBat)
 
-init.randrot <- function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL)
+init.randrot <- function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL, cormat = NULL)
 {
 
   if(is.null(X)) X <- matrix(1, ncol(Y))
-  if(any(dim(X) < 1)) stop("Dimensions of X (design matrix) invalid.")
-  if(is.null(Y) || ncol(Y) != nrow(X)) stop("Number of rows in X (design matrix) and number of columns in Y do not match.")
+  if(any(dim(X) < 1)) stop("Dimensions of X (design matrix) invalid")
+  if(is.null(Y) || ncol(Y) != nrow(X)) stop("Number of rows in X (design matrix) and number of columns in Y do not match")
 
   if(is.null(coef.h)) coef.h <- seq_len(ncol(X))
-  if(!all(coef.h %in% seq_len(ncol(X)))) stop("coef.h not contained in X (design matrix).")
-  if(length(coef.h) < 1) stop("length(coef.h) must be at least 1.")
+  if(!all(coef.h %in% seq_len(ncol(X)))) stop("coef.h not contained in X (design matrix)")
+  if(length(coef.h) < 1) stop("length(coef.h) must be at least 1")
 
   if(is.null(colnames(X))) colnames(X) <- seq_len(ncol(X))
+
+  if(nrow(X) != ncol(Y)) stop("nrow(X) must match ncol(Y)")
 
   coef.h = sort(coef.h)
   coef.d = setdiff(seq_len(ncol(X)), coef.h)
   if(length(coef.d > 0) && (min(coef.h) < max(coef.d))){
-    message("coef.d do not correspond to the last columns in the design matrix.\nColumns of design matrix are rearranged.")
+    message("coef.d do not correspond to the last columns in the design matrix.\nColumns of design matrix are rearranged")
     X = X[, c(coef.d, coef.h), drop = FALSE]
     coef.d = seq_len(length(coef.d))
     coef.h = seq_len(length(coef.h)) + length(coef.d)
   }
 
-  if(!is.null(weights)) return(init.randrot.w(Y, X, coef.h, coef.d, weights))
 
-  decomp = X.decomp(X, coef.d, coef.h)
+  # Factorisation of correlationmatrix for whitening transformation
+  if(!is.null(cormat)){
+    if(any(abs(cormat) > 1) | !isSymmetric(cormat)) stop("cormat has elements >1, <-1 and/or is not symmetric")
+    if(ncol(cormat) != nrow(X)) stop("Dimensions of cormat must match sample size")
+    if(all(abs(cormat[upper.tri(cormat)]) < 1e-10)) warning("all non-diagonal entries of cormat are < 1e-10 or > -1e-10")
 
-  Yd = Y %*% decomp$Xd %*% t(decomp$Xd)
+    cholC = chol(cormat)
+    tcholCinv <- drop(forwardsolve(t(cholC), diag(ncol(cholC))))
+    cholC = drop(cholC)
+  } else {
+    cholC <- NULL
+    tcholCinv <- NULL
+  }
+
+
+  if(!is.null(weights)) return(init.randrot.w(Y = Y, X = X, coef.h = coef.h, coef.d = coef.d, weights = weights, cormat = cormat, tcholCinv = tcholCinv, cholC = cholC))
+
+  #### (Whitening) transformation of X and Y
+  if(!is.null(cormat)){
+    Y.w <- Y %*% t(tcholCinv)
+    X.w <- tcholCinv %*% X
+  }
+
+  #### QR-decomposition of X
+  decomp = X.decomp(X.w, coef.d, coef.h)
+
+  Yd = Y.w %*% decomp$Xd %*% t(decomp$Xd)
   dimnames(Yd) = dimnames(Y)
 
-  Xhe.Y = t(decomp$Xhe) %*% t(Y)
+  Xhe.Y.w = t(decomp$Xhe) %*% t(Y.w)
 
-  new("init.randrot", list(X = X, Xhe.Y = Xhe.Y, Yd = Yd, Xhe = decomp$Xhe,
-                           coef.d = coef.d, coef.h = coef.h))
+  new("init.randrot", list(X = X, Xhe.Y.w = Xhe.Y.w, Yd = Yd, Xhe = decomp$Xhe,
+                           coef.d = coef.d, coef.h = coef.h, cormat = cormat, cholC = cholC))
 }
 
-init.randrot.w = function(Y, X, coef.h, coef.d, weights)
+init.randrot.w = function(Y, X, coef.h, coef.d, weights, cormat, tcholCinv, cholC)
 {
-  if(any(weights <= 0) | any(!is.finite(weights))) stop("Weights must be finite > 0.")
+  if(any(weights <= 0) | any(!is.finite(weights))) stop("Weights must be finite > 0")
   w = sqrt(weights)
 
+  #### (Whitening) transformation of Y and X and QR-decomposition of X
+  if(!is.null(cormat)){
+    Y.w <- (w * Y) %*% t(tcholCinv)
 
-  #### Transform Y
-  Y.w = w * Y
+    decomp.list = apply(w, 1, function(w.i){
+      X.decomp(tcholCinv %*% (w.i * X), coef.d, coef.h)
+    })
+  } else {
+    Y.w <- (w * Y)
 
+    decomp.list = apply(w, 1, function(w.i){
+      X.decomp(w.i * X, coef.d, coef.h)
+    })
+  }
 
-  decomp.list = apply(w, 1, function(w.i){
-    X.decomp(w.i * X, coef.d, coef.h)
-  })
 
   Yd = t(sapply(seq_len(nrow(Y.w)), function(i){
     Y.w[i,,drop = FALSE] %*% decomp.list[[i]]$Xd %*% t(decomp.list[[i]]$Xd)
@@ -115,33 +151,47 @@ init.randrot.w = function(Y, X, coef.h, coef.d, weights)
   })
 
   new("init.randrot.w", list(X = X, Xhe.Y.w = Xhe.Y.w, Yd = Yd, decomp.list = decomp.list,
-                             coef.d = coef.d, coef.h = coef.h, w = w))
+                             coef.d = coef.d, coef.h = coef.h, cormat = cormat, cholC = cholC, w = w))
 }
 
 
 
 
 
-
-
-#' Initialised randRot class
+#' Initialised random rotation class
 #'
-#' @return
+#' List-based S4 class containing all information necessary to generate randomly rotated data with the \code{\link[randRotation:randrot]{randrot}} method.
+#' \code{init.randrot} and \code{init.randrot.w} objects are created with the \code{\link[randRotation:init.randrot]{init.randrot}} method.
+#' @components
 #' @export
-#' @rdname class.init.randrot
+#' @section Components:
+#' The following components are included as list elements:
+#' \describe{
+#'   \item{\code{X}}{Original (non-transformed) design matrix.}
+#'   \item{\code{Xhe}, \code{Xhe.Y.w}, \code{Yd}}{}
+#'   \item{\code{coef.h}, \code{coef.d}}{Indices of \eqn{H_0}{H0} coefficients (\code{coef.h}) and indices of all other coefficients (\code{coef.d}).}
+#'   \item{\code{cormat}}{Correlation matrix, see \code{\link[randRotation:init.randrot]{init.randrot}}.}
+#'   \item{\code{cholC}}{Cholesky decomposition of cormat: \code{cormat = cholC %*% t(cholC)}.}
+#' }
 #'
+#' @author Peter Hettegger
 #' @examples
 setClass("init.randrot", contains = "list")
 
-
-
-#' Class init.randrot.w
+#' Initialised random rotation class with weights
 #'
+#' This class is organised as its base class \code{init.randrot}, see description in \code{\link[randRotation:init.randrot-class]{init.randrot-class}}.
+#' Some components are changed or added.
+#' @section Components:
+#' The following components are changed or as compared to \code{\link[randRotation:init.randrot-class]{init.randrot-class}}:
+#' \describe{
+#'   \item{\code{decomp.list}}{List containing decomposed (transformed) design matrix for each feature, see \code{\link[randRotation:X.decomp]{X.decomp}}.}
+#'   \item{\code{w}}{Numeric matrix with dimensions \code{features x samples} containing component wise square root of the weight matrix, see \code{\link[randRotation:init.randrot]{init.randrot}}.}
+#' }
 #' @return
 #' @export
-#' @rdname class.init.randrot
-#'
 #' @examples
+#' @author Peter Hettegger
 setClass("init.randrot.w", contains = c("init.randrot", "list"))
 
 
@@ -156,9 +206,10 @@ setClass("init.randrot.w", contains = c("init.randrot", "list"))
 #' @param X the design matrix of the experiment with \code{samples x coefficients} dimensions. If no design matrix is specified, intercept only model is used (design matrix with one column where all elements are \code{1}).
 #' @param coef.h single integer or vector of integers specifying the \code{H_0} coefficients. \code{coef.h} should correspond to the last columns in \code{X} (see Details).
 #' @param weights numerical matrix of finite positive weights > 0. Dimensions must be equal to dimensions of \code{Y}.
+#' @param cormat The sample correlation matrix with \code{samples x samples} dimensions. Must be a real symmetric positive-definite square matrix.
 #'
 #' @rdname init.randrot
-#' @return an initialised object containing all necessary information for generating randomly rotated data (\code{\link[randRotation:randrot]{randrot}}).
+#' @return an initialised object containing all necessary information for generating randomly rotated data (\code{\link[randRotation:randrot]{randrot}}). See \code{\link[randRotation:init.randrot-class]{init.randrot-class}}
 #' @author Peter Hettegger
 #' @references \insertAllCited{}
 #'
@@ -178,7 +229,7 @@ setClass("init.randrot.w", contains = c("init.randrot", "list"))
 #'
 #' @examples
 #'
-setGeneric("init.randrot", function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL) {standardGeneric("init.randrot")})
+setGeneric("init.randrot", function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL, cormat = NULL) {standardGeneric("init.randrot")})
 
 
 
@@ -193,8 +244,8 @@ setGeneric("init.randrot", function(Y = NULL, X = NULL, coef.h = NULL, weights =
 #'
 #' @examples
 setMethod("init.randrot", "list",
-          function(Y = NULL, X = Y$design, coef.h = NULL, weights = Y$weights){
-            init.randrot(Y = Y$E, X = X, coef.h = coef.h, weights = weights)
+          function(Y = NULL, X = Y$design, coef.h = NULL, weights = Y$weights, cormat = NULL){
+            init.randrot(Y = Y$E, X = X, coef.h = coef.h, weights = weights, cormat = cormat)
           })
 
 
@@ -204,17 +255,34 @@ setMethod("init.randrot", "list",
 #' @param init.randrot
 #' @export
 #' @rdname init.randrot
+#' @details The show method always displays the original design matrix (\code{X}), not the transformed versions.
 
 setMethod("show", "init.randrot",
           function(object)
           {
             cat("Initialised random rotation object", if(!is.null(object$w))"(with weights)","\n\n")
-            cat(dim(object$Yd)[1], "features   ", dim(object$Yd)[2], "samples\n")
-            cat("Coefficients to test (coef.h):", colnames(object$X)[object$coef.h], "\n\n")
+            cat(dim(object$Yd)[1], "features   ", dim(object$Yd)[2], "samples\n\n")
+            cat("Coefficients to test (coef.h):", colnames(object$X)[object$coef.h], "\n", sep = "\n")
 
-            cat("\nmodel matrix (X):\n")
-            print(head(init.rand$X, n = 6))
+            cat("model matrix (X):\n")
+            print(head(object$X, n = 6))
             if(nrow(object$X) > 6)cat(".\n.\n",nrow(object$X)-6, "more rows\n")
+
+            if(!is.null(object$cormat)){
+              cat("\ncorrelation matrix (cormat) - showing max first 6x6 entries:\n")
+              show.i = seq_len(min(6, ncol(object$cormat)))
+              print(object$cormat[show.i, show.i])
+              cat("\n")
+            }
+
+            if(!is.null(object$w)){
+              cat("\nweights - showing max first 6x6 entries:\n")
+              show.i = seq_len(min(6, dim(object$w)))
+              print((object$w[show.i, show.i])^2)
+              cat("\n")
+            }
+
+            cat("\n\n")
 
           }
 )
@@ -256,9 +324,12 @@ setGeneric("randrot", function(object, ...) standardGeneric("randrot"))
 setMethod("randrot", "init.randrot",
           function(object){
             ### No excessive initial checks for efficiency purposes.
-            R = randorth(nrow(object$Xhe.Y))
+            R = randorth(nrow(object$Xhe.Y.w))
 
-            with(object, Yd + t(Xhe %*% R %*% Xhe.Y))
+            if(is.null(object$cormat))
+              (object$Yd + t(object$Xhe %*% R %*% object$Xhe.Y.w))
+            else
+              (object$Yd + t(object$Xhe %*% R %*% object$Xhe.Y.w)) %*% object$cholC
           })
 
 
@@ -279,8 +350,11 @@ setMethod("randrot", "init.randrot.w",
               object$decomp.list[[i]]$Xhe %*% R.Xhe.Y.w[,i]
             }))
 
-            # backtransform Y.w to Y with inverse weigths
-            (1/object$w) * (object$Yd + Yhe)
+            # de-withening of Y.w
+            if(is.null(object$cormat))
+              (1/object$w) *  (object$Yd + Yhe)
+            else
+              (1/object$w) * ((object$Yd + Yhe) %*% object$cholC)
           })
 
 
