@@ -1,0 +1,241 @@
+---
+title: "Random Rotation Package Introduction"
+author: "Peter Hettegger"
+date: "`r Sys.Date()`"
+# output: rmarkdown::pdf_document
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    fig_width: 4.5
+    fig_height: 3.5
+vignette: >
+  %\VignetteIndexEntry{Random Rotation Package Introduction}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+bibliography: ../inst/library.bib
+---
+
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  tidy=TRUE
+)
+```
+
+
+# Introduction
+
+`randRotation` is an R package intended for generation of randomly rotated data to resample null distributions of linear model based dependent test statistics. See also .............. (Yekutieli Benjamini Paper hier zitieren und später auch das eigene Paper). Possible applications for resampling by roation, that are outlined in this document, are: (i) linear models in combination with practically arbitrary (linear or non-linear) batch effect correction methods --> Section ...; (ii) calculation of resampling based test statistics for calculating resampling based p-values and false discovery rates (FDRs) --> Section ...; (iii) estimation of the degrees of freedoms (df) used by idempotent mapping functions  --> Section ... and (iv) generation of resampled datasets for evaluation of data analysis pipelines --> Section .... Generally, the rotation approach provides a methodology for generating resampled data in the context of linear models and thus potentially has further conceivable areas of applications in high-dimensional data analysis with dependent variables. Nevertheless, we focus this document on the outlined range of issues in order to provide an intuitive and problem-centered introduction.
+
+
+# Sample dataset
+
+For subsequent analyses we create a hypothetical sample dataset of 3 batches, each containing 5 Control and 5 Cancer samples with 1000 features (genes).
+
+```{r message=FALSE}
+
+library(randRotation)
+set.seed(0)
+# Dataframe of phenotype data (sample information)
+pdata = data.frame(batch = rep(1:3, c(10,10,10)),
+                   phenotype = rep(c("Control", "Cancer"), c(5,5)))
+features = 1000
+
+# Matrix with random gene expression data
+edata = matrix(rnorm(features * nrow(pdata)), features)
+rownames(edata) = paste("feature", 1:nrow(edata))
+
+with(pdata, table(batch, phenotype))
+```
+
+
+# Batch effect correction with subsequent linear model analysis 
+
+In the following we outline the use of the `randRotation` package for linear model analysis following batch effect correction as a prototype application in current biomedical research. We highlight the problems faced when batch effect correction is separated from data analysis with linear models. In the following we use `ComBat` (`sva` package) for batch effect correction with subsequent linear model analysis with the `limma` package. For further information about these packages, see [@Ritchie2015;@Leek2019]. We use `limma` and `ComBat` as model functions for demonstration, as these are frequently used in biomedical research. Nevertheless, we want to emphasize that neither the described issues are specific to these functions, nor do we want to somehow defame these highly useful packages.
+
+## Skewed null distribution of p values
+
+Separating (an arbitrary) batch effect correction method from linear model analysis could practically lead to skewed null distributions of p-values for testing linear model coefficients. The intuitive reason for this skew is that the batch effect correction method combines information of all samples to remove the batch effects. After removing the batch effects, the samples are thus no longer independent. For further information please refer to section [df estimation](#dfest) and to the [references](#references).
+
+We first load the `limma` and `sva` packages and create the model matrix with the intercept term and the phenotype term. 
+
+```{r message=FALSE, warning=FALSE, results='hold'}
+library(limma)
+library(sva)
+
+mod1 = model.matrix(~phenotype, pdata)
+
+# Linear model fit
+fit0 <- lmFit(edata, mod1)
+fit0 <- eBayes(fit0)
+
+# P value for phenotype coefficient
+p0 <- topTable(fit0, coef = 2, number = Inf, adjust.method = "none", sort.by = "none")$P.Value
+hist(p0, freq = FALSE, col = rgb(0,1,0,0.3), breaks = seq(0,1,0.1)); abline(1,0, col = "blue", lty = 2)
+qqunif(p0)
+```
+
+
+We now perform batch effect correction using `ComBat`:
+```{r}
+edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1)
+```
+
+The batch effect corrected data is fit with `limma` and subsequently the phenotype covariate is tested for significance. The resulting p-values are shown in the following histogram.
+
+```{r}
+# Linear model fit
+fit1 <- lmFit(edata.combat, mod1)
+fit1 <- eBayes(fit1)
+
+# P value for phenotype coefficient
+p.combat <- topTable(fit1, coef = 2, number = Inf, adjust.method = "none", sort.by = "none")$P.Value
+hist(p.combat, freq = FALSE, col = rgb(0,1,0,0.3), breaks = seq(0,1,0.1)); abline(1,0, col = "blue", lty = 2)
+qqunif(p.combat)
+```
+
+Remember that the sample dataset was generated from a random normal distribution. The histogram thus clearly shows that the null-distribution of p-values is skewed when linear model analysis is performed following batch effect correction in a data analysis pipeline of this type. This problem is known and described e.g. in [@Nygaard2015]. Note that the null-distribution is skewed although the experimental design is balanced.
+
+
+## Unskewed p-values with resampling
+
+
+```{r}
+init1 = init.batch.randrot(edata, mod1, 2, pdata$batch)
+
+
+statistic <- function(Y, batch, mod, coef){
+  Y.tmp <- sva::ComBat(Y, batch = batch, mod)
+
+  fit1 <- limma::lmFit(Y.tmp, mod)
+  fit1 <- limma::eBayes(fit1)
+  abs(fit1$t[,coef,drop = FALSE])
+}
+
+stat.args = list(batch = pdata$batch, mod = mod1, coef = 2)
+```
+
+```{r message=FALSE, warning=FALSE, results='hide'}
+res1 <- rotate.stat(init1, statistic, stat.args, 1000, parallel = TRUE, split.parallel = TRUE)
+```
+
+```{r}
+ res1$s0[1:50, 1] = 6
+ res1$s0[51:80, 1] = 2
+ 
+ res1$s0[1,1] = NA
+ res1$stats[[1]] = NA
+ res1$stats[[1]][1,1] = NA
+ 
+p.rot = p.fdr(res1, na.rm = TRUE)
+hist(p.rot)
+
+plot(sort(p.fdr(res1, "BH", na.rm = TRUE)), type = "l")
+
+lines(sort(p.fdr(res1, "fdr.q", na.rm = TRUE)), pch = ".", col = "blue")
+lines(sort(p.fdr(res1, "fdr.qu", na.rm = TRUE)), pch = ".", col = "red")
+lines(sort(p.fdr(res1, "BY", na.rm = TRUE)), pch = ".", col = "green")
+
+sum(is.na(p.fdr(res1, "BH")))
+sum(is.na(p.fdr(res1, "BY")))
+sum(is.na(p.fdr(res1, "fdr.q", na.rm = TRUE)))
+sum(is.na(p.fdr(res1, "fdr.qu", na.rm = TRUE)))
+
+
+lines(sort(p.fdr(res1, "fdr.q", na.rm = TRUE)), pch = ".", col = "blue")
+lines(sort(p.fdr(res1, "fdr.qu", na.rm = TRUE)), pch = ".", col = "red")
+lines(sort(p.fdr(res1, "BY")), pch = ".", col = "green")
+
+legend("bottomright", legend = c("BH", "fdr.q", "fdr.qu", "BY"), lty = 1, col = c("black", "blue", "red", "green"))
+
+
+
+hist(p.rot, freq = FALSE, col = rgb(0,1,0,0.3), breaks = seq(0,1,0.1)); abline(1,0, col = "blue", lty = 2)
+qqunif(p.rot)
+
+plot(density(log(p.combat/p0)), col = "blue", "Log p ratios", panel.first = abline(v=0, col = "grey"))
+lines(density(log(p.rot/p0)), col = "salmon")
+legend("topleft", legend = c("log( p.combat / p0 )", "log( p.rot / p0 )"), lty = 1, col = c("blue", "salmon"))
+
+```
+
+
+Here you see that the combat p-values are biased against the "true" null p-values.
+
+
+```{r}
+plot(density(log(p.combat/p.rot)), col = "blue", main = "log( p.combat / p.rot )", panel.first = abline(v=0, col = "grey"))
+```
+In this plot you see that the combat p-values are biased against the rotation based p values.
+
+
+
+# Quick start - linear models with batch effect correction
+
+
+# How many resamples ?
+
+In principle the number of resamples (`R`) should be at least as high as the number of features in order to reach unskewed null distributions (for n features --> with a p-value of 1/n you still expect 1 significant feature).
+
+
+# df estimation {#dfest}
+
+ACHTUNG: Warauf muss man bei df.estimate achten (z.B. wenn man die Combat df's schätzt ) ? Welche coef's muss ich wählen ?
+
+<!-- # ```{r,eval=FALSE,purl=FALSE} -->
+<!-- # library(limma) -->
+<!-- # library(sva) -->
+<!-- #  -->
+<!-- # mod1 = model.matrix(~phenotype, pdata) -->
+<!-- # edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1) -->
+<!-- # ``` -->
+<!-- # ```{r, include=FALSE} -->
+<!-- # library(limma) -->
+<!-- # library(sva) -->
+<!-- #  -->
+<!-- # mod1 = model.matrix(~phenotype, pdata) -->
+<!-- # edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1) -->
+<!-- # ``` -->
+
+
+
+
+
+<!-- # Parallelisation -->
+
+<!-- ```{r message=FALSE, warning=FALSE, results='hide'} -->
+<!-- t1 = Sys.time() -->
+<!-- res1 <- rotate.stat(init1, statistic, stat.args, 700) -->
+<!-- Sys.time()-t1 -->
+
+<!-- t1 = Sys.time() -->
+<!-- res1 <- rotate.stat(init1, statistic, stat.args, 7000, parallel = TRUE, split.parallel = FALSE) -->
+<!-- Sys.time()-t1 -->
+
+<!-- t1 = Sys.time() -->
+<!-- res1 <- rotate.stat(init1, statistic, stat.args, 7000, parallel = TRUE, split.parallel = 7) -->
+<!-- Sys.time()-t1 -->
+
+<!-- ``` -->
+
+
+# References {#references}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
