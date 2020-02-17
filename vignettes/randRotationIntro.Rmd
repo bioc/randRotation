@@ -35,7 +35,6 @@ knitr::opts_chunk$set(
 For subsequent analyses we create a hypothetical sample dataset of 3 batches, each containing 5 Control and 5 Cancer samples with 1000 features (genes).
 
 ```{r message=FALSE}
-
 library(randRotation)
 set.seed(0)
 # Dataframe of phenotype data (sample information)
@@ -50,14 +49,16 @@ rownames(edata) = paste("feature", 1:nrow(edata))
 with(pdata, table(batch, phenotype))
 ```
 
+# Rotation method - coef.d stay the same under rotation
+Hier gleich ein Beispiel mit weights bringen
 
 # Batch effect correction with subsequent linear model analysis 
 
-In the following we outline the use of the `randRotation` package for linear model analysis following batch effect correction as a prototype application in current biomedical research. We highlight the problems faced when batch effect correction is separated from data analysis with linear models. In the following we use `ComBat` (`sva` package) for batch effect correction with subsequent linear model analysis with the `limma` package. For further information about these packages, see [@Ritchie2015;@Leek2019]. We use `limma` and `ComBat` as model functions for demonstration, as these are frequently used in biomedical research. Nevertheless, we want to emphasize that neither the described issues are specific to these functions, nor do we want to somehow defame these highly useful packages.
+In the following we outline the use of the `randRotation` package for linear model analysis following batch effect correction as a prototype application in current biomedical research. We highlight the problems faced when batch effect correction is separated from data analysis with linear models. The separation of batch effect correction and subsequent analysis is unavoidable for certain applications. In the following we use `ComBat` (`sva` package) for batch effect correction with subsequent linear model analysis with the `limma` package. For further information about these packages, see [@Ritchie2015;@Leek2019]. We use `limma` and `ComBat` as model functions for demonstration, as these are frequently used in biomedical research. Nevertheless, we want to emphasize that neither the described issues are specific to these functions, nor do we want to somehow defame these highly useful packages.
 
 ## Skewed null distribution of p values
 
-Separating (an arbitrary) batch effect correction method from linear model analysis could practically lead to skewed null distributions of p-values for testing linear model coefficients. The intuitive reason for this skew is that the batch effect correction method combines information of all samples to remove the batch effects. After removing the batch effects, the samples are thus no longer independent. For further information please refer to section [df estimation](#dfest) and to the [references](#references).
+Separating (an arbitrary) batch effect correction method from linear model analysis could practically lead to non-uniform (skewed) null distributions of p-values for testing linear model coefficients. The intuitive reason for this skew is that the batch effect correction method combines information of all samples to remove the batch effects. After removing the batch effects, the samples are thus no longer independent. For further information please refer to section [df estimation](#dfest) and to the [references](#references). The following example demonstrates an approach for sample correlation matrices with block design, For other designs please refer to section [Correlation matrices with non-block design](#nonblock).
 
 We first load the `limma` and `sva` packages and create the model matrix with the intercept term and the phenotype term. 
 
@@ -96,18 +97,18 @@ hist(p.combat, freq = FALSE, col = rgb(0,1,0,0.3), breaks = seq(0,1,0.1)); ablin
 qqunif(p.combat)
 ```
 
-Remember that the sample dataset was generated from a random normal distribution. The histogram thus clearly shows that the null-distribution of p-values is skewed when linear model analysis is performed following batch effect correction in a data analysis pipeline of this type. This problem is known and described e.g. in [@Nygaard2015]. Note that the null-distribution is skewed although the experimental design is balanced.
+Remember that the sample dataset was generated from a random normal distribution. The histogram and Q-Q plot clearly show that the null-distribution of p-values is skewed when linear model analysis is performed following batch effect correction in a data analysis pipeline of this type. This problem is known and described e.g. in [@Nygaard2015]. Note that the null-distribution is skewed although the experimental design is balanced.
 
 
 ## Unskewed p-values with resampling
 
 
 ```{r}
-init1 = init.batch.randrot(edata, mod1, 2, pdata$batch)
-
+#w = matrix(1+runif(length(edata))-0.5, nrow(edata), ncol(edata))
+init1 = init.batch.randrot(edata, mod1, coef.h = 2, batch = pdata$batch)
 
 statistic <- function(Y, batch, mod, coef){
-  Y.tmp <- sva::ComBat(Y, batch = batch, mod)
+  Y.tmp <- sva::ComBat(dat = Y, batch = batch, mod = mod)
 
   fit1 <- limma::lmFit(Y.tmp, mod)
   fit1 <- limma::eBayes(fit1)
@@ -118,51 +119,30 @@ stat.args = list(batch = pdata$batch, mod = mod1, coef = 2)
 ```
 
 ```{r message=FALSE, warning=FALSE, results='hide'}
-res1 <- rotate.stat(init1, statistic, stat.args, 1000, parallel = TRUE, split.parallel = TRUE)
+res1 <- rotate.stat(initialised.obj = init1, statistic = statistic, statistic.args = stat.args, R = 1000, parallel = TRUE, ncpus = 2)
 ```
 
 ```{r}
- res1$s0[1:50, 1] = 6
- res1$s0[51:80, 1] = 2
- fd
- res1$s0[1,1] = NA
- res1$stats[[1]] = NA
- res1$stats[[1]][1,1] = NA
- 
-p.rot = p.fdr(res1, na.rm = TRUE)
-hist(p.rot)
 
-plot(sort(p.fdr(res1, "BH", na.rm = TRUE)), type = "l")
-
-lines(sort(p.fdr(res1, "fdr.q", na.rm = TRUE)), pch = ".", col = "blue")
-lines(sort(p.fdr(res1, "fdr.qu", na.rm = TRUE)), pch = ".", col = "red")
-lines(sort(p.fdr(res1, "BY", na.rm = TRUE)), pch = ".", col = "green")
-
-sum(is.na(p.fdr(res1, "BH")))
-sum(is.na(p.fdr(res1, "BY")))
-sum(is.na(p.fdr(res1, "fdr.q", na.rm = TRUE)))
-sum(is.na(p.fdr(res1, "fdr.qu", na.rm = TRUE)))
-
-
-lines(sort(p.fdr(res1, "fdr.q", na.rm = TRUE)), pch = ".", col = "blue")
-lines(sort(p.fdr(res1, "fdr.qu", na.rm = TRUE)), pch = ".", col = "red")
-lines(sort(p.fdr(res1, "BY")), pch = ".", col = "green")
-
-legend("bottomright", legend = c("BH", "fdr.q", "fdr.qu", "BY"), lty = 1, col = c("black", "blue", "red", "green"))
-
-
+p.rot = p.fdr(res1)
 
 hist(p.rot, freq = FALSE, col = rgb(0,1,0,0.3), breaks = seq(0,1,0.1)); abline(1,0, col = "blue", lty = 2)
 qqunif(p.rot)
 
-plot(density(log(p.combat/p0)), col = "blue", "Log p ratios", panel.first = abline(v=0, col = "grey"))
-lines(density(log(p.rot/p0)), col = "salmon")
+plot(density(log(p.rot/p0)), col = "salmon", "Log p ratios", panel.first = abline(v=0, col = "grey"),
+     xlim = range(log(c(p.rot/p0, p.combat/p0))))
+lines(density(log(p.combat/p0)), col = "blue")
 legend("topleft", legend = c("log( p.combat / p0 )", "log( p.rot / p0 )"), lty = 1, col = c("blue", "salmon"))
+
+plot(p0, p.combat, log = "xy", pch = 19, col = "lightblue", ylab = "")
+points(p0, p.rot, pch = 19, col = "salmon")
+abline(0,1, lwd = 1.5, col = "black")
+legend("topleft", legend = c("p.combat", "p.rot"), pch = 19, col = c("lightblue", "salmon"))
 
 ```
 
 
-Here you see that the combat p-values are biased against the "true" null p-values.
+Here you see that the combat p-values are downward biased against the "true" null p-values.
 
 
 ```{r}
@@ -184,23 +164,50 @@ In principle the number of resamples (`R`) should be at least as high as the num
 
 ACHTUNG: Warauf muss man bei df.estimate achten (z.B. wenn man die Combat df's schätzt ) ? Welche coef's muss ich wählen ?
 
-<!-- # ```{r,eval=FALSE,purl=FALSE} -->
-<!-- # library(limma) -->
-<!-- # library(sva) -->
-<!-- #  -->
-<!-- # mod1 = model.matrix(~phenotype, pdata) -->
-<!-- # edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1) -->
-<!-- # ``` -->
-<!-- # ```{r, include=FALSE} -->
-<!-- # library(limma) -->
-<!-- # library(sva) -->
-<!-- #  -->
-<!-- # mod1 = model.matrix(~phenotype, pdata) -->
-<!-- # edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1) -->
-<!-- # ``` -->
+ACHTUNG: Auch für df.estimate eine testthat-routine schreiben
 
 
+```{r message=FALSE, warning=FALSE, results='hide'}
 
+mapping = function(Y, batch, mod) {
+  sva::ComBat(Y, batch, mod)
+}
+
+mapping.args = list(batch = pdata$batch, mod = mod1)
+
+idempot(edata, mapping, mapping.args, quantiles = seq(0,1,0.25))
+idempot(edata, function(Y)floor(Y))
+idempot(edata, function(Y)Y*1.5)
+
+dfs = df.estimate(init1, mapping, mapping.args)
+hist(dfs)
+summary(dfs)
+```
+
+
+```{r,eval=FALSE,purl=FALSE}
+
+library(limma)
+library(sva)
+
+mod1 = model.matrix(~phenotype, pdata)
+edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1)
+```
+```{r, include=FALSE}
+library(limma)
+library(sva)
+
+mod1 = model.matrix(~phenotype, pdata)
+edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1)
+
+```
+
+
+# Correlation matrices with non-block design {#nonblock}
+
+Function `init.batch.randrot` implicitly assumes a block design of the sample correlation matrix. This means that correlations between samples are allowed within batches, but are zero between batches. Simply put, biological replicates or technical replicates (or any other cause of non-zero sample correlation) are contained within single batches and are not distributed to different batches. In this case, each batch has his own sample correlation matrix and correlation coefficients between batches are assumed to be zero. This assumption seems restrictive at first view, but is computationally efficient and hence implemented in `init.batch.randrot`. However, a general correlation matrix with non-block design (non-zero sample correlations between batches) can be initialised with `init.randrot`. Thus, `init.batch.randrot` simply provides a comfortable wrapper for sample correlation matrices with block design.
+
+# Plots with different FDRs (BH, BY, fdr.q, ...)
 
 
 <!-- # Parallelisation -->
