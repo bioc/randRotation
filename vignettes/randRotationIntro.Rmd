@@ -124,7 +124,7 @@ res1 <- rotate.stat(init1, statistic, stat.args, 1000, parallel = TRUE, split.pa
 ```{r}
  res1$s0[1:50, 1] = 6
  res1$s0[51:80, 1] = 2
- 
+ fd
  res1$s0[1,1] = NA
  res1$stats[[1]] = NA
  res1$stats[[1]][1,1] = NA

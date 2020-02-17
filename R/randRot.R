@@ -3,7 +3,6 @@
 
 
 
-
 #' Decomposition of the design matrix for random rotation generation
 #'
 #' Full QR decomposition of the design matrix \code{X}. No argument checks are performed, see \code{Details}.
@@ -20,13 +19,13 @@
 #' full basis. \code{Xq} is further split into \code{Xd} and \code{Xhe}, where
 #' \code{Xd} corresponds to columns \code{coef.d} (non-\code{H0} or
 #' non-Null-Hypothesis columns) and \code{Xhe} correspond to all other columns
-#' (\code{H0} and error columns). No argument checks are performed as this
+#' (\code{H0} and error columns). No argument checks are performed for reasons of performance as this
 #' function is called frequently by \code{\link[randRotation:init.randrot]{init.randrot}} when
 #' weights are used.
 #' See \insertCite{Langsrud2005}{randRotation} for further details.
 #'
-#' @author Peter Hettegger
 #' @references \insertAllCited{}
+#' @author Peter Hettegger
 #' @examples
 #' design = cbind(1, rep(0:1, 5))
 #' X.decomp(design)
@@ -44,34 +43,6 @@ X.decomp <- function(X = NULL, coef.d = seq_len(ncol(X)-1))
 }
 
 
-
-
-## pre-allocate memory before executing loops
-
-### Ev. noch folgende Methoden:
-# - Batch-effect rotation (Wrappermethode für init.randrot und randrot)
-
-
-
-# ### set following methods (see also limma's "classes.R" file):
-# dim
-# dimnames
-# as.matrix
-# "dimnames<-.RGList" <- .setdimnames
-
-### ev. auch die [] operatoren definieren. Aber bringt das was ? Das gesamte Objekt
-### müsste neu berechnet werden wenn die Anzahl an Spalten verändert wird.
-
-
-
-
-
-#### implement contrasts and moderated statistics !
-
-
-
-
-
 ### Initialization can either be done with limma compatible objects containing $design, $E and $weights
 ### or by hand.
 ### We do not use annotation data here in order to avoid excessive copying of annotation data when the
@@ -80,7 +51,7 @@ X.decomp <- function(X = NULL, coef.d = seq_len(ncol(X)-1))
 init.randrot <- function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL, cormat = NULL)
 {
 
-  if(is.null(X)) X <- matrix(1, ncol(Y))
+  if(is.null(X)) stop("Please specify X")
   if(any(dim(X) < 1)) stop("Dimensions of X (design matrix) invalid")
   if(is.null(Y) || ncol(Y) != nrow(X)) stop("Number of rows in X (design matrix) and number of columns in Y do not match")
 
@@ -152,7 +123,11 @@ init.randrot <- function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL, corm
 init.randrot.w <- function(Y, X, coef.h, coef.d, weights, cormat, cholCinv, tcholC)
 {
   if(any(weights <= 0) | any(!is.finite(weights))) stop("Weights must be finite > 0")
+  if(!all(dim(weights) == dim(Y))) stop("Y and weights must have equal dimensions.")
+
   w = sqrt(weights)
+
+
 
   #### (Whitening) transformation of Y and X and QR-decomposition of X
   if(!is.null(cormat)){
@@ -185,6 +160,81 @@ init.randrot.w <- function(Y, X, coef.h, coef.d, weights, cormat, cholCinv, tcho
 }
 
 
+#' Initialisation of a random rotation Object
+#'
+#' Initialization of a linear model for subsequent generation of randomly rotated data (\code{\link[randRotation:randrot]{randrot}}) associated with the null hypothesis
+#' \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0}. Basics of rotation tests are found in \insertCite{Langsrud2005}{randRotation}.
+#'
+#'
+#' @param Y a data matrix with \code{features x samples} dimensions or a list with elements \code{E}, \code{design} and \code{weights} (see \code{Details}). Missing values (\code{\link[base:NA]{NA}}) are allowed but e.g. lead to NAs for all samples of the respective features in the rotated dataset and should thus be avoided. We highly recommend avoiding missing values by e.g. replacing them by imputation or removing features containing NAs.
+#' @param X the design matrix of the experiment with \code{samples x coefficients} dimensions.
+#' @param coef.h single integer or vector of integers specifying the \code{H_0} coefficients. \code{coef.h} should correspond to the last columns in \code{X} (see \code{Details}). By default, all coefficients are set as \code{H_0} coefficients. If \code{coef.h} is set \code{-1}, no coefficient is set as \code{H_0} coefficient.
+#' @param weights numerical matrix of finite positive weights > 0. Dimensions must be equal to dimensions of \code{Y}.
+#' @param cormat the sample correlation matrix with \code{samples x samples} dimensions. Must be a real symmetric positive-definite square matrix. See \code{Details} for usage in \code{init.batch.randrot}.
+#'
+#' @rdname init.randrot
+#' @return An initialised \code{\link[randRotation:init.randrot-class]{init.randrot}}, \code{\link[randRotation:init.randrot-class]{init.randrot.w}} or \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot}} object.
+#' @author Peter Hettegger
+#' @references \insertAllCited{}
+#'
+#' @details
+#'
+#' This function performs basic initial checks and preparatory calculations for random rotation data generation, see \insertCite{Langsrud2005}{randRotation}.
+#' Nomenclature of variables is mainly as in \insertCite{Langsrud2005}{randRotation}. See also package vignette for application examples.
+#'
+#' \code{Y} can also be a list with elements \code{E}, \code{design} and \code{weights}. \code{Y$E} is thereby used as \code{Y}, \code{Y$design} is used as \code{X} and \code{Y$weights} is used as \code{weights}. By this,
+#' the functions are compatible with results from e.g. \code{voom} (\code{limma} package), see \code{Examples}.
+#'
+#' \code{coef.h} specifies the model coefficients associated with the null hypothesis ("hypothesis coefficients"). All other model coefficients are considered as "determined coefficients" \code{coef.d} \insertCite{Langsrud2005}{randRotation}.
+#' The design matrix is rearranged so that \code{coef.h} correspond to the last columns of the design matrix. This is necessary for adequate transformation of the combined null-hypothesis \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0} by QR decomposition.
+#'
+#'
+#' Weights must be finite positive \code{numerics} greater zero. This is necessary for model (QR) decomposition and for backtransformation of the rotated data into the original variance structure, see also \code{\link[randRotation:randrot]{randrot}}.
+#' Weights as estimated e.g. by voom \insertCite{Law2014}{randRotation} are suitable and can be used without further processing. Note that due to the whitening
+#' transformation (i.e. by using the arguments \code{weights} and/or \code{cormat}) the rank of the transformed (whitened) design matrix \code{X} could change (become smaller),
+#' which could become dangerous for the fitting procedures. If you get errors using weights, try the routine without using weights to exclude this source of errors.
+#'
+#'
+#' The following section provides a brief summary how rotations are calculated. A more general introduction is given in \insertCite{Langsrud2005}{randRotation}
+#' For reasons of readability, we omit writing \code{\%*\%} for matrix multiplication and write \code{*} for transposed matrix.
+#' The rotation is done by multiplying the \code{features x samples} data matrix \code{Y} with the transpose of the restricted random rotation matrix \code{Rt}
+#'
+#' \code{Rt = Xd Xd* + [Xh  Xe] R [Xh  Xe]*}
+#'
+#' with \code{R} being a (reduced) random rotation matrix and \code{Xd}, \code{Xh} and \code{Xe} being columns of the full QR decomposition of the design matrix \code{X}.
+#' \code{[Xd Xh Xe] = qr.Q(qr(X), complete = TRUE)}, where \code{Xd} correspond to columns \code{coef.d}, \code{Xh} to columns \code{coef.h} and \code{Xe} to the remaining columns.
+#'
+#' If \code{weights} and/or \code{cormat} are specified, each feature \code{Y[i,]} and the design matrix \code{X} are whitening transformed before rotation.
+#' The whitening matrix \code{T} is defined as \code{T = solve(C) w}, where \code{solve(C)} is the inverse Cholesky decompostion of the correlation matrix (\code{cormat = CC*}) and
+#' \code{w} is a diagonal matrix of the square roots of the sample weights for the according feature (\code{w = diag(sqrt(weights[i,]}))).
+#'
+#' The rotated data for one feature \code{y.r[i,]} is thus calculated as
+#'
+#' \code{y.r[i,] = ( solve(T) Rt T (y[i,])* )*} and
+#' \code{[Xd Xh Xe] = qr.Q(qr(TX), complete = TRUE)}
+#'
+#' For \code{weights = NULL} and \code{cormat = NULL}, \code{T} is the identity matrix.
+#'
+#' Note that a separate QR decomposition is calculated for each feature if \code{weights} are specified.
+#' The restricted random orthogonal matrix \code{Rt} is calculated with the same reduced random rotation matrix \code{R} for all features.
+#'
+#' @export
+#' @seealso \code{\link[randRotation:randrot]{randrot}}, \code{\link[randRotation:rotate.stat]{rotate.stat}}
+#'
+#' @import methods
+#' @importFrom stats approx ecdf p.adjust ppoints qqline qqplot quantile qunif rnorm spline
+#' @importFrom utils head
+#' @examples
+#'
+#' # Compatibility with limma::voom
+#'
+#' \dontrun{
+#' v <- voom(counts, design)
+#' ir <- init.randrot(v)}
+#'
+#' # For further examples see '?rotate.stat' and package vignette.
+#'
+setGeneric("init.randrot", function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL, cormat = NULL) {standardGeneric("init.randrot")})
 
 
 
@@ -197,106 +247,70 @@ init.randrot.w <- function(Y, X, coef.h, coef.d, weights, cormat, cholCinv, tcho
 #' \describe{
 #'   \item{\code{X}}{Original (non-transformed) design matrix.}
 #'   \item{\code{Xhe}, \code{Xhe.Y.w}, \code{Yd}}{Pre-multiplied matrix products needed for generation of rotated data (\code{\link[randRotation:randrot]{randrot}}).}
-#'   \item{\code{coef.h}, \code{coef.d}}{Indices of \eqn{H_0}{H0} coefficients (\code{coef.h}) and indices of all other coefficients (\code{coef.d}).}
+#'   \item{\code{coef.h}, \code{coef.d}}{Indices of \eqn{H_0}{H0} coefficients (\code{coef.h} or "hypothesis coefficients") and indices of all other coefficients (\code{coef.d} or "determined coefficients").}
 #'   \item{\code{cormat}}{Correlation matrix, see \code{\link[randRotation:init.randrot]{init.randrot}}.}
 #'   \item{\code{tcholC}}{Cholesky decomposition of cormat: \code{cormat = crossprod(tcholC)}.}
+#'   \item{\code{rank}}{Rank of the qr decomposition of (transformed/whitened) \code{X}}
 #' }
 #' @export
-#' @author Peter Hettegger
-#' @examples
+#' @rdname init.randrot-class
 setClass("init.randrot", contains = "list")
 
 #' Initialised random rotation class with weights
 #'
-#' This class is organised as its base class \code{init.randrot}, see description in \code{\link[randRotation:init.randrot-class]{init.randrot-class}}.
-#' Some components are changed or added.
+#' \code{init.randrot.w} is organised as its base class \code{init.randrot}, altough some components are changed or added.
 #' @section Components:
-#' The following components are changed or as compared to \code{\link[randRotation:init.randrot-class]{init.randrot-class}}:
+#' The following components are changed or added in \code{init.randrot.w-class} as compared to \code{init.randrot-class}:
 #' \describe{
-#'   \item{\code{decomp.list}}{List containing decomposed (transformed) design matrix for each feature, see \code{\link[randRotation:X.decomp]{X.decomp}}.}
+#'   \item{\code{decomp.list}}{List containing \code{Xd}, \code{Xhe} and rank of the transformed/whitened design matrix for each feature, see also \code{\link[randRotation:X.decomp]{X.decomp}}.}
 #'   \item{\code{w}}{Numeric matrix with dimensions \code{features x samples} containing component wise square root of the weight matrix, see \code{\link[randRotation:init.randrot]{init.randrot}}.}
 #' }
-#' @return
 #' @export
-#' @examples
+#' @rdname init.randrot-class
 #' @author Peter Hettegger
 setClass("init.randrot.w", contains = c("init.randrot", "list"))
 
 
 
-
 #' Initialised random rotation batch object
 #'
-#' This class contains a list of \code{init.randrot} or \code{init.randrot.w} class objects, see descriptions in \code{\link[randRotation:init.randrot-class]{init.randrot-class}} and \code{\link[randRotation:init.randrot.w-class]{init.randrot.w-class}}.
-#' @return
+#' This class contains \code{init.randrot} or \code{init.randrot.w} class objects for each batch. See also descriptions in \code{\link[randRotation:init.randrot]{init.randrot}} and \code{\link[randRotation:init.randrot-class]{init.randrot-class}}.
+#' @section Components:
+#' \describe{
+#'   \item{\code{batch.obj}}{List of \code{init.randrot} or \code{init.randrot.w} class objects for each batch.}
+#'   \item{\code{split.by}}{List of sample indices for each batch.}
+#' }
 #' @export
-#' @examples
 #' @author Peter Hettegger
 setClass("init.batch.randrot", contains = c("list"))
 
 
-#' Rotated object containing p values
+#' Rotated object containing rotated and non-rotated statistics
 #'
-#' This class contains calculated statistics for the original data (\code{s0}) and rotated data (\code{stats}). See also \code{\link[randRotation:rotate.stat]{rotate.stat}}.
-#' @return
+#' This list based class contains calculated statistics for the original data (\code{s0}) and rotated data (\code{stats}). See also \code{\link[randRotation:rotate.stat]{rotate.stat}}.
+#' @section Components:
+#' \describe{
+#'   \item{\code{s0}}{Calculated statistics for original (non-rotated) data as returned by the \code{statistic} function (\code{\link[randRotation:rotate.stat]{rotate.stat}}).}
+#'   \item{\code{stats}}{List of length \code{ncol.s} containing statistics on rotated data for each column returned by the \code{statistic} function.}
+#'   \item{\code{ncol.s}}{Number of columns returned by the \code{statistic} function.}
+#'   \item{\code{R}}{Number of resamples/rotations.}
+#' }
 #' @export
-#' @examples
 #' @author Peter Hettegger
 setClass("rotate.stat", contains = "list")
 
 
 
 
-#' Initialisation of a random rotation Object
-#'
-#' Initialization of a linear model for subsequent generation of randomly rotated data (\code{\link[randRotation:randrot]{randrot}}) associated with the null hypothesis
-#' \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0}. Basics of rotation tests are found in \insertCite{Langsrud2005}{randRotation}.
-#'
-#'
-#' @param Y a data matrix with \code{features x samples} dimensions. Missing values (\code{\link[base:NA]{NA}}) are allowed but e.g. lead to NAs for all samples of the respective features in the rotated dataset and should thus be avoided. We highly recommend avoiding missing values by e.g. replacing them by imputation or removing features containing NAs.
-#' @param X the design matrix of the experiment with \code{samples x coefficients} dimensions. If no design matrix is specified, intercept only model is used (design matrix with one column where all elements are \code{1}).
-#' @param coef.h single integer or vector of integers specifying the \code{H_0} coefficients. \code{coef.h} should correspond to the last columns in \code{X} (see \code{Details}). By default, all coefficients are set as \code{H_0} coefficients. If \code{coef.h} is set \code{-1}, no coefficient is set as \code{H_0} coefficient.
-#' @param weights numerical matrix of finite positive weights > 0. Dimensions must be equal to dimensions of \code{Y}.
-#' @param cormat The sample correlation matrix with \code{samples x samples} dimensions. Must be a real symmetric positive-definite square matrix. See \code{Details} for usage in \code{init.batch.randrot}.
-#'
-#' @rdname init.randrot
-#' @return an initialised object containing all necessary information for generating randomly rotated data (\code{\link[randRotation:randrot]{randrot}}). See \code{\link[randRotation:init.randrot-class]{init.randrot-class}}
-#' @author Peter Hettegger
-#' @references \insertAllCited{}
-#'
-#' @details
-#'
-#' This function performs basic initial checks and preparatory calculations for random rotation data generation, see \insertCite{Langsrud2005}{randRotation}.
-#' Nomenclature of variables is mainly as in \insertCite{Langsrud2005}{randRotation}. See also package vignette for application examples.
-#'
-#' \code{coef.h} specifies the model coefficients associated with the null hypothesis. All other model coefficients #### continue here
-#' The design matrix is rearranged so that \code{coef.h} correspond to the last columns of the design matrix. This is necessary for adequate transformation of the combined null-hypothesis \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0} by QR decomposition.
-#'
-#'
-#' Weights must be finite positive values greater zero. This ist necessary for model (QR) decomposition and for backtransformation of the rotated data into the original variance structure, see also \code{\link[randRotation:randrot]{randrot}}.
-#' Weights as estimated e.g. by voom \insertCite{Law2014}{randRotation} are suitable and can be used without further processing. Note that due to the whitening
-#' transformation (i.e. by using the arguments \code{weights} and/or \code{cormat}) the rank of the transformed design matrix \code{X} could change (become smaller),
-#' which could become dangerous for the fitting procedures. If you get errors using weights, try the routine without using weights to exclude this source of errors.
-#' @export
-#' @seealso \code{\link[randRotation:randrot]{randrot}}
-#' @examples
-#'
-# @import Matrix
-#' @import methods
-#' @importFrom stats rnorm
-setGeneric("init.randrot", function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL, cormat = NULL) {standardGeneric("init.randrot")})
-
-
-#'
-#' @return
-#' @export
-#' @details When using \code{init.batch.randrot}, \code{init.randrot} is called for each batch separately. When using \code{init.batch.randrot} with \code{cormat}, \code{cormat} needs to be a list of correlation matrices with one matrix for each batch. Batches are split according to \code{split(seq_along(batch), batch)}.
-#'
-#' @rdname init.randrot
 init.batch.randrot <- function(Y = NULL, X = NULL, coef.h = NULL, batch = NULL, weights = NULL, cormat = NULL)
 {
 
-  spl1 = split(seq_along(batch), batch)
+  if(is.null(batch) || length(batch) != ncol(Y)) stop("Please specify batch variable with length(batch) being equal to ncol(Y)")
+
+  tmp1 <- seq_along(batch)
+  names(tmp1) <- colnames(Y)
+  spl1 = split(tmp1, batch)
+
 
   Y.l = lapply(spl1, function(i){
     Y[,i,drop = FALSE]
@@ -322,16 +336,30 @@ init.batch.randrot <- function(Y = NULL, X = NULL, coef.h = NULL, batch = NULL, 
 }
 
 
-#' Title
-#'
-#' @param list This is a test
-#' @param Y2 Another test
-#'
-#' @return
-#' @rdname init.randrot
+
+#' @param batch Batch covariate of the same length as \code{ncol(Y)}.
 #' @export
+#' @details When using \code{init.batch.randrot}, \code{init.randrot} is called for each batch separately. When using \code{init.batch.randrot} with \code{cormat}, \code{cormat} needs to be a list of correlation matrices with one matrix for each batch.
+#' Note that this implicitly assumes a block design of the sample correlation matrix, where sample correlation coefficients between batches are zero. For a more general sample correlation matrix, allowing non-zero sample correlation coefficients between batches, see package vignette.
+#' Batches are split according to \code{split(seq_along(batch), batch)}.
 #'
-#' @examples
+#' @rdname init.randrot
+#'
+#' @examples # See '?rotate.stat'
+setGeneric("init.batch.randrot", function(Y = NULL, X = NULL, coef.h = NULL, batch = NULL, weights = NULL, cormat = NULL) {standardGeneric("init.batch.randrot")})
+
+
+#' @export
+#' @rdname init.randrot
+setMethod("init.batch.randrot", "list",
+          function(Y = NULL, X = Y$design, coef.h = NULL, batch = NULL, weights = Y$weights, cormat = NULL){
+            init.batch.randrot(Y = Y$E, X = X, coef.h = coef.h, batch = batch, weights = weights, cormat = cormat)
+          })
+
+
+
+#' @export
+#' @rdname init.randrot
 setMethod("init.randrot", "list",
           function(Y = NULL, X = Y$design, coef.h = NULL, weights = Y$weights, cormat = NULL){
             init.randrot(Y = Y$E, X = X, coef.h = coef.h, weights = weights, cormat = cormat)
@@ -340,10 +368,16 @@ setMethod("init.randrot", "list",
 
 
 
-
+#' Show an Object
+#'
+#' Display the object by printing structured summary information.
+#'
+#' @param object An object of class \code{\link[randRotation:init.randrot-class]{init.randrot-class}} or \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.
+#'
 #' @export
-#' @rdname init.randrot
-#' @details The show method always displays the original design matrix (\code{X}), not the transformed versions.
+#' @rdname show
+#' @return \code{show} returns an invisible \code{NULL}.
+#' @details The show method always displays the original design matrix (\code{X}), not the transformed (whitened) versions.
 
 setMethod("show", "init.randrot",
           function(object)
@@ -372,16 +406,19 @@ setMethod("show", "init.randrot",
 
             cat("\n\n")
 
+            invisible()
+
           }
 )
 
+
+#' @rdname show
 #' @export
-#' @rdname init.randrot
 
 setMethod("show", "init.batch.randrot",
           function(object)
           {
-            cat("Initialised batch random rotation ojbect (with blockDesign = TRUE). In the following the structure of each batch is listed separately:\n\n")
+            cat("Initialised batch random rotation ojbect - In the following, the structure of each batch is listed separately:\n\n")
 
             invisible(lapply(seq_along(object$batch.obj), function(i){
               cat("##########################\n")
@@ -390,34 +427,34 @@ setMethod("show", "init.batch.randrot",
 
               show(object$batch.obj[[i]])
             }))
+            invisible()
           }
 )
 
 
 #' Random rotation of initialised object
 #'
-#' Perform random data rotation of a previously initialised object (\code{\link[randRotation:init.randrot]{init.randrot}}) associated with the null hypothesis \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0}.
+#' Perform random data rotation of a previously initialised object (see \code{\link[randRotation:init.randrot]{init.randrot}}) associated with the null hypothesis \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0}.
 #'
 #'
-#' @param object An initialised object
-#' @param ... Further arguments are passed to \code{randorth}
+#' @param object An initialised object of class \code{\link[randRotation:init.randrot-class]{init.randrot-class}} or \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.
+#' @param ... further arguments passed to \code{\link[randRotation:randorth]{randorth}}
 #'
-#' @return a numerical matrix of rotated data under the specified combined null hypothesis.
+#' @return \code{numeric} matrix of rotated data under the specified combined null hypothesis.
 #' @export
 #' @rdname randrot
-#'
 #' @details
 #'
-#' This function generates a randomly rotated dataset from an initialised randrot object (\code{\link[randRotation:init.randrot]{init.randrot}}). See also package vignette for application examples.
-#' Only the numerical matrix of rotated data is returned, no design matrix, weights or other info is return for efficiency purposes.
-#' restricted random rotation matrix \eqn{R_t^*}{Rt*} \deqn{R_t^* = X_dX_d' + \left[X_h \quad X_e \right] R^* \left[X_h \quad X_e \right]^\prime}{Rt* = Xd Xd' + [Xh  Xe] R* [Xh  Xe]'}
-#' with ' being the transposed and \code{R*} being a (reduced) random rotation matrix with reduced dimensions ### continue here
+#' This function generates a randomly rotated dataset from an initialised randrot object (see \code{\link[randRotation:init.randrot]{init.randrot}}). See also package vignette for application examples.
+#' Only the numerical matrix of rotated data is returned, no design matrix, weights or other info is return for efficiency purposes. Please consider that
+#' if you e.g. use \code{weights} or if you use \code{\link[randRotation:rotate.stat]{rotate.stat}}, you may need to forward the design matrix \code{X}, \code{weights} etc. to subsequent anylyses.
+#' See the example in \code{\link[randRotation:rotate.stat]{rotate.stat}}.
 #'
-#' In the case of weighted data, for each feature a separate QR decomposition and
-#' restricted random orthogonal matrix is calculated with the same reduced random rotation matrix \eqn{R*} for all features.
-#' Weighted is rotated by feature wise pre-multiplying \code{Y} and \code{X} with the respective weights.
+#' Details on the calculation of a rotated datset are given in \code{\link[randRotation:init.randrot]{init.randrot}} and \insertCite{Langsrud2005}{randRotation}.
+#'
 #' @author Peter Hettegger
-#' @examples
+#' @references \insertAllCited{}
+#' @examples # See '?rotate.stat'
 setGeneric("randrot", function(object, ...) standardGeneric("randrot"))
 
 
@@ -481,38 +518,95 @@ setMethod("randrot", "init.batch.randrot",
 
 #' Generate data rotations and calculate statistics on it
 #'
-#' @param initialised.obj
-#' @param statistic A function that calculates a statistic from a datamatrix \code{Y} (see also \code{\link[randRotation:init.randrot]{init.randrot}}) and any further arguments passed to it by \code{statistic.args}.
-#' Note that \code{\link[randRotation:p.fdr]{p.fdr}}) considers larger values of statistics significant, so one-tailed tests may require inversion and two-tailed tests may require taking absolute values.
-#' The results of \code{statistic} for each resample are finally combined with \code{cbind}. Results with multiple columns are possible and handled adequately in subsequent functions (e.g. \code{\link[randRotation:p.fdr]{p.fdr}}).
-#' @param statistic.args A list of arguments passed to \code{statistic}, see \code{Examples}.
-#' @param R The number of resamples.
-#' @param parallel
-#' @param split.parallel
-#' @param cl
-#' @param ...
+#' This function generates rotations of data and calculates the provided \code{statistic} on each rotation and the non-rotated (original) data.
+#' This is the central function of the package.
 #'
-#' @return
+#' @param initialised.obj An initialised random rotation object as returned by \code{\link[randRotation:init.randrot]{init.randrot}} and \code{\link[randRotation:init.randrot]{init.batch.randrot}}.
+#' @param statistic A function that calculates a statistic from a data matrix \code{Y} (see also \code{\link[randRotation:init.randrot]{init.randrot}}) and any further arguments passed to it by \code{statistic.args}.
+#' Note that \code{\link[randRotation:p.fdr]{p.fdr}} considers larger values of statistics significant, so one-tailed tests may require inversion and two-tailed tests may require taking absolute values.
+#' The results of \code{statistic} for each resample are finally combined with \code{cbind}, so ensure that \code{statistic} returns either a vector or a matrix with \code{nrow(initialised.obj)} rows.
+#' Results with multiple columns are possible and handled adequately in subsequent functions (e.g. \code{\link[randRotation:p.fdr]{p.fdr}}).
+#' @param statistic.args A list of arguments passed to \code{statistic}, see \code{Examples}.
+#' @param R The number of resamples/rotations. Single \code{numeric} larger than 1.
+#' @param parallel \code{logical} if parallel computation should be performed, see details for use of parallel computing.
+#' @param ncpus \code{numeric} number of processes to be used in parallel operation. If not provided,
+#' @param split.parallel \code{logical} or \code{numeric}, see details.
+#' @param cl A \code{parallel} or \code{snow} cluster. If no cluster is provided, a cluster is created on the local machine according, see details.
+#' @param ... Further arguments forwarded to \code{\link[foreach:foreach]{foreach::foreach}}. This should only be utilised by experienced users.
+#'
+#' @return An object of class \code{\link[randRotation:rotate.stat-class]{rotate.stat}}.
+#' @rdname rotate.stat
 #' @export
-#' @details If \code{parallel = TRUE} and no argument \code{cl} is delivered, a cluster is created with the method \code{parallel::makeCluster} with one core less than \code{parallel::detectCores()} returns.
+#' @details
+#'
+#' The function takes an initialised randrot object (\code{\link[randRotation:init.randrot]{init.randrot}}) and a function that calculates a statistic on the data.
+#' The statistic function thereby takes the a matrix \code{Y} as first argument. Any further arguments are passed to it by \code{statistic.args}.
+#'
+#'
+#' Be aware that only data is rotated (see also \code{\link[randRotation:randrot]{randrot}}), so any additional information including \code{weights}, \code{X} etc. need to be provided to \code{statistic}.
+#' See also package vignette and \code{Examples}.
+#'
+#' If \code{parallel = TRUE} and no argument \code{cl} is delivered, a cluster is created with the method \code{parallel::makeCluster} with \code{ncpus} cores or (if \code{ncpus = NULL}) with one core less than \code{parallel::detectCores()} returns.
 #' So the default cluster is generated as \code{parallel::makeCluster(parallel::detectCores()-1)}. If \code{parallel = TRUE} the function calls in \code{statistic} need to be called explicitly with package name and "::".
-#' So e.g. calling \code{lmFit} from the \code{limma} package is done with \code{limma::lmFit(...)}.
+#' So e.g. calling \code{lmFit} from the \code{limma} package is done with \code{limma::lmFit(...)}, see also the examples in the package vignette.
 #'
 #' Sometimes it is rewarding to split the resampling loop into smaller loops that are executed on separate cores. E.g. if \code{R = 800} it could be faster to execute 100 rotations on 8 CPUs instead of distributing all
 #' 800 rotations on the 8 CPUs (due to parallelisation overhead), see also the package vignette. This splitting can be done with \code{split.parallel}. \code{split.parallel} could be logic or an integer > 0 specifying the number of cores to split the task.
 #' If \code{split.parallel} is \code{TRUE}, the number of cores is retrieved with \code{foreach::getDoParWorkers()}.
 #'
+#' @author Peter Hettegger
 #'
 #' @examples
-#' @author Peter Hettegger
-### funktioniert das auch mit weights ???
-rotate.stat = function(initialised.obj, statistic, statistic.args = list(), R = 10, parallel = FALSE, split.parallel = TRUE, cl = NULL, ...){
+#' #set.seed(0)
+#'
+#' # Dataframe of phenotype data (sample information)
+#' # We simulate 2 sample classes processed in 3 batches
+#' pdata = data.frame(batch = rep(1:3, c(10,10,10)),
+#'                    phenotype = rep(c("Control", "Cancer"), c(5,5)))
+#' features = 100
+#'
+#' # Matrix with random gene expression data
+#' edata = matrix(rnorm(features * nrow(pdata)), features)
+#' rownames(edata) = paste("feature", 1:nrow(edata))
+#'
+#' mod1 = model.matrix(~phenotype, pdata)
+#'
+#' # Initialisation of the random rotation class
+#' init1 <- init.batch.randrot(Y = edata, X = mod1, coef.h = 2, batch = pdata$batch)
+#' init1
+#'
+#' # Definition of the batch effect correction procedure with subsequent calculation
+#' # of two-sided test statistics
+#' statistic <- function(Y, batch, mod, coef){
+#'
+#'   # The "capture.output" and "suppressMessages" simply suppress any output
+#'   capture.output(suppressMessages(
+#'     Y.tmp <- sva::ComBat(Y, batch = batch, mod)
+#'   ))
+#'
+#'   fit1 <- lm.fit(mod, t(Y.tmp))
+#'   abs(coef(fit1)[coef,])
+#' }
+#'
+#' # We calculate test statistics for the second coefficient
+#' stat.args = list(batch = pdata$batch, mod = mod1, coef = 2)
+#'
+#' res1 <- rotate.stat(initialised.obj = init1,
+#'                     statistic = statistic,
+#'                     statistic.args = stat.args,
+#'                     R = 100,
+#'                     parallel = FALSE)
+#'
+#' hist(p.fdr(res1))
+
+rotate.stat = function(initialised.obj, statistic, statistic.args = list(), R = 10, parallel = FALSE, ncpus = NULL, split.parallel = TRUE, cl = NULL, ...){
 
   if(R<1) stop("R must be at least 1")
 
   if(parallel){
     if(is.null(cl)) {
-      cl <- parallel::makeCluster(parallel::detectCores()-1, type = ifelse(.Platform$OS.type == "windows", "PSOCK", "FORK"))
+      ncpus <- ifelse(is.null(ncpus), max(parallel::detectCores()-1, 1), ncpus)
+      cl <- parallel::makeCluster(ncpus, type = ifelse(.Platform$OS.type == "windows", "PSOCK", "FORK"))
       doParallel::registerDoParallel(cl)
       on.exit(parallel::stopCluster(cl))
     }
@@ -525,50 +619,98 @@ rotate.stat = function(initialised.obj, statistic, statistic.args = list(), R = 
   i = seq_len(R+1)
 
   if(parallel && split.parallel){
-    n <- max(foreach::getDoParWorkers(), split.parallel)
+    n <- ifelse(isTRUE(split.parallel), foreach::getDoParWorkers(), as.numeric(split.parallel))
     message("Parallelisation: Task is split to ", n, " workers")
     i <- split(i, factor(sort(rank(i)%%n)))
+    j <- numeric(0) # If not defined, "R CMD check" complains about variable "j" in the nested foreach loops.
 
     stats <- f1(foreach::foreach(i=i, .options.snow=list(preschedule=TRUE), .inorder = TRUE, .combine = cbind, .multicombine = TRUE, ...),
                 foreach::`%do%`(foreach::foreach(j=i, .options.snow=list(preschedule=TRUE), .inorder = TRUE, .combine = cbind, .multicombine = TRUE, ...),
-                do.call(statistic, c(list(Y=randrot(initialised.obj, I.matrix = (j == 1))), statistic.args)))
+                                do.call(statistic, c(list(Y=randrot(initialised.obj, I.matrix = (j == 1))), statistic.args)))
     )
   } else
     stats <- f1(foreach::foreach(i=i, .options.snow=list(preschedule=TRUE), .inorder = TRUE, .combine = cbind, .multicombine = TRUE, ...),
                 do.call(statistic, c(list(Y=randrot(initialised.obj, I.matrix = (i == 1))), statistic.args))
     )
 
-  ## The "statistic" function can return results with multiple columns:
+  ## The "statistic" function can return results with multiple columns.
+  ## Thus the results are organized accordingly in lists (one list element for each column).
   s0.i = 1:(ncol(stats)/(R+1))
   ncol.s = length(s0.i)
   s0 = stats[,s0.i,drop = FALSE]
   stats = stats[,-s0.i,drop = FALSE]
 
   stats = lapply(split(1:ncol(stats), factor((1:ncol(stats)-1) %% ncol.s)), function(i)stats[,i,drop=FALSE])
-
+  names(stats) = colnames(s0)
 
   new("rotate.stat", list(s0 = s0, stats = stats, ncol.s = ncol.s, R = R))
 }
 
 
+#' Dimensions of an Object
+#'
+#' Retrieve the dimensions of an object.
+#'
+#' @param x An object of class \code{\link[randRotation:init.randrot-class]{init.randrot-class}} or \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.
+#'
+#' @export
+#' @rdname dim
+#' @return Vector of length two with number of \code{features} and number of \code{samples}. See also \code{\link[randRotation:init.randrot]{init.randrot}}.
+setMethod("dim", "init.randrot", function(x)dim(x$Yd))
 
+#' @export
+#' @rdname dim
+setMethod("dim", "init.batch.randrot", function(x)c(nrow(x$batch.obj[[1]]), sum(lengths(x$split.by))))
+
+#' Dimnames of an Object
+#'
+#' Retrieve the dimnames of an object.
+#'
+#' @param x An object of class \code{\link[randRotation:init.randrot-class]{init.randrot-class}} or \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.
+#'
+#' @export
+#' @rdname dimnames
+setMethod("dimnames", "init.randrot", function(x)dimnames(x$Yd))
+
+
+#' @export
+#' @rdname dimnames
+setMethod("dimnames", "init.batch.randrot", function(x)list(rownames(x$batch.obj[[1]]$Yd), unlist(lapply(x$split.by, names), use.names = FALSE)))
 
 #' Random rotation matrix
 #'
-#' Generation of a random rotation matrix (random orthogonal matrix) distributed with haar measure.
-#' @param n
-#' @param type
-#' @param I.matrix if \code{TRUE} return identity matrix.
+#' Generation of a random \code{n x n} rotation matrix (random orthogonal matrix) distributed with haar measure.
 #'
-#' @return
+#' @param n \code{numeric} of length 1 defining the dimensions of the \code{n x n} square matrix.
+#' @param type Either \code{"orthonormal"} or \code{"unitary"} defining whether a real orthonormal matrix or a complex unitary matrix should be returned.
+#' @param I.matrix If \code{TRUE}, the identity matrix is returned.
+#'
+#' @return A random rotation matrix of dimension \code{n x n}.
 #' @export
-#' @details Adapted from pracma package (randortho function) (\code{\link[pracma:randortho]{randortho}})
+#' @details Adapted from pracma package (\code{\link[pracma:randortho]{pracma::randortho}})
 #' \insertCite{Stewart1980a}{randRotation}
 #'
+#' @references \insertAllCited{}
 #' @author Peter Hettegger
+#' @importFrom graphics smoothScatter
 #' @examples
+#'
+#' # The following example shows the orthogonality of the random rotation matrix:
+#' R1 = randorth(4)
+#' zapsmall(t(R1) %*% R1)
+#'
+#' R1 = randorth(4, "unitary")
+#' zapsmall(Conj(t(R1)) %*% R1)
+#'
+#' # The following example shows the distribution of 2-dimensional random orthogonal vectors
+#' # on the unit circle.
+#' tmp1 = vapply(1:200, function(i)randorth(2)[,1], numeric(2))
+#' plot(t(tmp1), xlab = "x", ylab = "y")
+#'
 randorth <- function (n, type = c("orthonormal", "unitary"), I.matrix = FALSE)
 {
+
+
   if(I.matrix) return(diag(n))
   ### this function was adapted from the pracma package (randortho function)
 
@@ -598,12 +740,12 @@ randorth <- function (n, type = c("orthonormal", "unitary"), I.matrix = FALSE)
 #'
 #' @param n Number of samples
 #'
-#' @return A random permutation matrix
+#' @return A random permutation matrix of dimension \code{n x n}
 #' @export
 #' @details This methods generates an orthogonal matrix with entries with only one entry in each row and column being \code{1}, all other entries being \code{0}.
 #' @examples
-#' design = model.matrix(~Species, iris)
-#' randpermut(5)
+#' tmp1 <- randpermut(5)
+#' t(tmp1) %*% tmp1
 #' @author Peter Hettegger
 randpermut <- function(n){
   m1 = matrix(0,n,n)
@@ -614,24 +756,84 @@ randpermut <- function(n){
 
 
 
-#' Estimation of degrees of freedom for idempotent mapping
+#' Estimation of degrees of freedom (df) for idempotent mapping
 #'
-#' @param initialised.obj
-#' @param mapping An idempotent function which when applied to a matrix with \code{features x samples} dimensions returns a matrix of
-#' transformed data with the same dimensions. Any further arguments can be passed to mapping through the mapping.args argument.
-#' @param mapping.args List of arguments passed to mapping functin.
+#' @param initialised.obj initialised.obj An initialised random rotation object as returned by \code{\link[randRotation:init.randrot]{init.randrot}} and \code{\link[randRotation:init.randrot]{init.batch.randrot}}.
+#' Currently, customised correlation matrices \code{cormat} (see \code{\link[randRotation:init.randrot]{init.randrot}}) are not allowed. Sample \code{weights} are allowed.
+#' @param mapping An idempotent mapping function that takes a matrix \code{Y} with \code{features x samples} dimensions and returns a matrix of
+#' transformed data with the same dimensions. Any further arguments can be passed to mapping through the \code{mapping.args} argument.
+#' @param mapping.args List of further arguments passed to mapping function.
 #' @param R Number of resampling replicates.
 #'
 #' @return A vector of estimated df for each feature.
 #' @export
 #'
-#' @details The mapping/transformation function can also be approximately idempotent.
+#' @details The mapping/transformation function can also be approximately idempotent. The function produces an error if
+#' a correlation matrix \code{cormat} (\code{\link[randRotation:init.randrot]{init.randrot}}) was specified when the random rotation object was initialised.
+#' \code{weights} are allowed.
 #'
 #' @examples
+#' #set.seed(0)
+#'
+#' # Dataframe of phenotype data (sample information)
+#' # We simulate 2 sample classes processed in 3 batches
+#' pdata = data.frame(batch = rep(1:3, c(10,10,10)),
+#'                    phenotype = rep(c("Control", "Cancer"), c(5,5)))
+#' features = 100
+#'
+#' # Matrix with random gene expression data
+#' edata = matrix(rnorm(features * nrow(pdata)), features)
+#' rownames(edata) = paste("feature", 1:nrow(edata))
+#'
+#' mod1 = model.matrix(~phenotype, pdata)
+#'
+#' # Initialisation of the random rotation class
+#' init1 <- init.batch.randrot(Y = edata, X = mod1, coef.h = 2, batch = pdata$batch)
+#'
+#' mapping = function(Y, batch, mod) {
+#'   sva::ComBat(Y, batch, mod)
+#' }
+#'
+#' mapping.args = list(batch = pdata$batch, mod = mod1)
+#'
+#' # Illustrate approximate idempotency of mapping function
+#' idempot(edata, mapping, mapping.args)
+#'
+#' dfs = df.estimate(init1, mapping, mapping.args)
+#' hist(dfs)
+#' summary(dfs)
 
+
+### Routine mit NAs ausprobieren
 #### Resampling ev durch bootstrap anstatt rotation ???? Was ist besser bzw. gibt es einen Vorteil/Nachteil ???
 #### Weights implementieren !!! (siehe Paper) Im Prinzip muss nur die letzte Summe (dfs = rowSums(...)) mit den weights erweitert werden.
-df.estimate = function(initialised.obj, mapping, mapping.args, R = 100){
+df.estimate = function(initialised.obj, mapping, mapping.args = NULL, R = 100){
+
+
+  ## testroutine schreiben, ob das mapping idempotent ist !!!
+
+  ## The weight matrix must be retrieved from 'initialised.obj'.
+  ## A pre-specified cormat is not allowed.
+  # if(is(initialised.obj, "init.batch.randrot")){
+  #   if(any(unlist(lapply(initialised.obj$batch.obj, function(i)(!is.null(i$cormat)))))){
+  #     stop("Random rotation objects with specified cormat are not allowed, see '?df.estimate'.")
+  #   }
+  #
+  #   w = lapply(initialised.obj$batch.obj, function(i)i$w)
+  #   if(all(unlist(lapply(w, is.null))))
+  #     {w = 1}
+  #   else
+  #     {w = do.call(cbind, w)}
+  # } else {
+  #   w = initialised.obj$w
+  #   if(is.null(w)) w = 1
+  # }
+
+  if((is(initialised.obj, "init.batch.randrot") &&
+     any(unlist(lapply(initialised.obj$batch.obj, function(i)(!is.null(i$cormat))))))
+     || !is.null(initialised.obj$cormat)){
+    stop("Random rotation objects with specified cormat are not allowed, see '?df.estimate'.")
+  }
 
   ### Berechnung über den "normalen Verschiebungssatz" ? --> (siehe z.B. Wikipedia Artikel "Verschiebungssatz")
   ### eventuell noch eine numerisch stabilere Variante implementieren (Stichwort "Auslöschung")
@@ -644,7 +846,7 @@ df.estimate = function(initialised.obj, mapping, mapping.args, R = 100){
   #### die mean estimation könnte man eventuell noch weglassen (oder eleganter ausprogrammieren) ...
   for(i in 1:9){
     y.ti = randrot(initialised.obj)
-    y.hi = do.call(mapping, c(list(Y=y.ti), trans.args))
+    y.hi = do.call(mapping, c(list(Y=y.ti), mapping.args))
 
     y.t = y.t + y.ti
     y.h = y.h + y.hi
@@ -667,7 +869,7 @@ df.estimate = function(initialised.obj, mapping, mapping.args, R = 100){
 
   for(i in 1:(R-1)){
     y.ti = randrot(initialised.obj)
-    y.hi = do.call(mapping, c(list(Y=y.ti), trans.args))
+    y.hi = do.call(mapping, c(list(Y=y.ti), mapping.args))
 
     y.ti = y.ti - y.t.mean
     y.hi = y.hi - y.h.mean
@@ -685,6 +887,57 @@ df.estimate = function(initialised.obj, mapping, mapping.args, R = 100){
 
   dfs = rowSums(covs)
 }
+
+
+#' Idempotency of a mapping function
+#'
+#' This function provides a tool for illustrating idempotency of a mapping function.
+#'
+#' An idempotent mapping function \code{m} is a mapping function with the property
+#' \code{m(Y)} equals \code{m(m(Y))} for a numerical matrix \code{Y}.
+#' This function calculates several \code{iterations} of the mapping (\code{m(Y), m(m(Y)), m(m(m(Y))), ...}).
+#' The differences between the sequential mappings (\code{m(Y)-Y, m(m(Y))-m(Y),...}) are calculated and \code{quantiles} of
+#' the differences are returned and plotted.
+#'
+#' @param Y A \code{numeric} matrix with \code{featuers x samples} dimensions.
+#' @inheritParams df.estimate
+#' @param iterations The number of iterations to be calculated.
+#' @param quantile.plot \code{logical}. \code{TRUE} if quantile plot should be produced.
+#' @param quantiles Sequence of quantiles that should be calculated and returned.
+#' @param na.rm \code{logical}. If \code{TRUE}, missing values (including \code{NaN}) are removed where possible.
+#'
+#' @importFrom graphics abline grid legend matplot
+#'
+#' @return \code{numeric} matrix of quantiles (of differences) for each iteration.
+#' @export
+#'
+#' @examples
+#' # See example in '?df.estimate'
+idempot = function(Y, mapping, mapping.args = NULL, iterations = 5, quantile.plot = TRUE,
+                   quantiles = seq(0,1,0.25), na.rm = FALSE){
+
+  if(iterations < 1) stop("iterations must be > 1.")
+  if(any(quantiles > 1 | quantiles < 0)) stop("quantiles must be between 0 and 1.")
+
+  y.t <- Y
+
+  quans = vapply(seq_len(iterations), function(i){
+    y.h = do.call(mapping, c(list(Y=y.t), mapping.args))
+    quans1 = quantile(abs(y.h - y.t), probs = quantiles, na.rm = na.rm)
+    y.t <<- y.h
+    quans1
+  }, numeric(length(quantiles)))
+
+  if(quantile.plot){
+    matplot(t(quans), type = "l", lty = 1:5, xlab = "Iteration", ylab = "absolute deviation",
+            ylim = c(0, max(quans)))
+    grid()
+    legend("topright", lty = 1:5, lwd = 1, col = 1:6, legend = paste("Quantile", quantiles))
+  }
+
+  quans
+}
+
 
 #
 # .fdr.qu = function(s0, stats, ref.vector = NULL, na.rm = FALSE, beta = 0.05)
@@ -753,17 +1006,18 @@ df.estimate = function(initialised.obj, mapping, mapping.args, R = 100){
 # }
 
 
-#' Internal function
+#' Internal functions for p-value and FDR estimation
 #'
-#' @param s0
-#' @param stats
-#' @param beta
-#' @param na.rm
-#' @param ref.vector NAs are removed from ref.vector
+#' @param s0 \code{numeric} vector of original (non-rotated) statistics.
+#' @param stats \code{numeric} matrix of rotated statistics.
+#' @param beta \code{numeric} between 0 and 1. See \insertCite{Yekutieli1999}{randRotation}.
+#' @param na.rm \code{logical}. Should missing values be removed ?
+#' @param ref.vector Reference vector defining at which grid points of \code{s0} and \code{stats} the FDRs are approximated. All other points are approximated by spline interpolation. NAs are removed from ref.vector
 #'
-#' @return
-#'
-#' @examples
+#' @return \code{numeric} vector of (adjusted) p-value or FDR estimations for \code{s0}.
+#' @rdname fdr.p
+#' @references \insertAllCited{}
+
 .fdr.qu = function(s0, stats, beta = 0.05, na.rm = FALSE, ref.vector = sort(s0, decreasing = TRUE, na.last = TRUE))
 {
   ref.vector = ref.vector[!is.na(ref.vector)]
@@ -780,7 +1034,7 @@ df.estimate = function(initialised.obj, mapping, mapping.args, R = 100){
     est.95qu.exc[i] <- quantile(v, prob = (1 - beta),
                                 names = FALSE, na.rm = na.rm)
     su.hat[i] <- r.vector[i] - est.95qu.exc[i]
-    su.hat[i] <- max(su.hat[i], 0, na.rm = na.rm) # su.hat smaller than 0 makes no sense
+    su.hat[i] <- max(su.hat[i], 0, na.rm = na.rm) # negative su.hat makes no sense
     resamp.q <- ifelse((v + su.hat[i]) != 0, v/(v + su.hat[i]),0)
     qu.value[i] <- mean(resamp.q, na.rm = na.rm)
   }
@@ -790,6 +1044,8 @@ df.estimate = function(initialised.obj, mapping, mapping.args, R = 100){
   approx(spline(ref.vector, qu.value), xout = abs(s0))$y
 }
 
+#' @rdname fdr.p
+#' @export
 .fdr.q = function(s0, stats, beta = 0.05, na.rm = FALSE, ref.vector = sort(s0, decreasing = TRUE, na.last = TRUE))
 {
   ref.vector = ref.vector[!is.na(ref.vector)]
@@ -816,6 +1072,10 @@ df.estimate = function(initialised.obj, mapping, mapping.args, R = 100){
   approx(spline(ref.vector, q.value), xout = abs(s0))$y
 }
 
+#' @param method A p-value or FDR adjustment method, see \code{\link[randRotation:p.fdr]{p.fdr}}.
+#' @param pooled \code{logical}. \code{TRUE} if marginal distributions are exchangeable for all features so that rotated stats can be pooled, see \code{\link[randRotation:p.fdr]{p.fdr}}.
+#' @rdname fdr.p
+#' @export
 .p.fdr <- function(s0, stats, method, pooled, na.rm, beta){
 
   if(method %in% c("fdr.q", "fdr.qu") && pooled == FALSE) stop("Methods \"fdr.q\" and \"fdr.qu\" can only be used with pooled = TRUE")
@@ -838,7 +1098,7 @@ df.estimate = function(initialised.obj, mapping, mapping.args, R = 100){
       } else {
         ### The "-" in ecdf and it's argument is necessary in order that the function behaves correctly for
         ### discrete statistics (i.e. in order that it is equivalent to ">=" instead of ">")
-        ps <- ecdf(x = -stats)(-s0)
+        ps <- pmax(ecdf(x = -stats)(-s0), 1/sum(!is.na(stats)))
         res <- p.adjust(p = ps, method = method)
       }
     }
@@ -853,38 +1113,39 @@ df.estimate = function(initialised.obj, mapping, mapping.args, R = 100){
 
 #' Calculate resampling based p-values and FDRs
 #'
-#' This function calculates either (1) resampling based p-values with p-value adjustment using \link[stats:p.adjust]{stats::p.adjust} or (2) resampling based false-discovery-rates (FDRs) for rotated data.
+#' This function calculates either (1) resampling based p-values with subsequent p-value adjustment using \code{\link[stats:p.adjust]{stats::p.adjust}} or (2) resampling based false-discovery-rates (FDRs) for rotated statistics from a \code{\link[randRotation:rotate.stat]{rotate.stat}} object.
 #'
 #'
-#' @param obj A \code{rotate.stat} object produced by \link[randRotation:rotate.stat]{stats::p.adjust}.
-#' @param method Can be either \code{"none"}, \code{"fdr.q"}, \code{"fdr.qu"} or any term that can be passed as \code{method} argument to \link[stats:p.adjust]{stats::p.adjust}, see \code{Details}. If \code{method = "none"}, resampling based
+#' @param obj A \code{rotate.stat} object as returned by \code{\link[randRotation:rotate.stat]{rotate.stat}}.
+#' @param method Can be either \code{"none"}, \code{"fdr.q"}, \code{"fdr.qu"} or any term that can be passed as \code{method} argument to \code{\link[stats:p.adjust]{stats::p.adjust}}, see \code{Details}. If \code{method = "none"}, resampling based
 #' p-values without further adjustment are calculated.
 #' @param pooled \code{logical}. \code{TRUE} (default) if marginal distributions are exchangeable for all features so that rotated stats can be pooled, see \code{Details}.
 #' @param na.rm \code{logical}. \code{NA} values are ignored if set \code{TRUE}. \code{NA} values should be avoided and could e.g. be removed by imputation in original data or by removing features that contain \code{NA} values. Few \code{NA} values do not have a large effect, but many \code{NA} values can lead to wrong estimations of p-values and FDRs. We highly recommend avoiding \code{NA} values.
-#' @param beta \code{numeric} between \code{0} and \code{1}. Corresponds to beta in .... cite Yekutieli and Benjamini paper here ....
+#' @param beta \code{numeric} between \code{0} and \code{1}. Corresponds to beta in \insertCite{Yekutieli1999}{randRotation}.
 #'
-#' @return
+#' @return A \code{numeric} matrix of corrected p-values or FDRs with dimension \code{dim(obj$s0)}.
 #' @export
 #' @seealso \code{\link[randRotation:rotate.stat]{rotate.stat}}
 #' @details Larger values of obj$s0 are considered more significant when compared to the empirical distribution. E.g. for calculation of resampling based p-values (with \code{pooled = FALSE}) we in principle use
 #' \code{p.val <- rowMeans(obj$stats >= obj$s0)}. We take \code{>=} instead of \code{>} when comparing rotated statistics against non-rotated statistics, as this is safer for discrete statistics.
 #'
 #' \code{method = "fdr.q"} and \code{method = "fdr.qu"} are resampling based fdr estimates and can only be used with \code{pooled = TRUE}. \code{method = "fdr.q"} is the FDR local estimator and \code{method = "fdr.qu"} is the FDR upper limit, see
-#' .... cite (Reiner Yekutieli Benjamini) and (Yekutieli Benjamini) papers here ....
-#' For all other \code{method} arguments resampling based p-values are calculated and passed to \link[stats:p.adjust]{stats::p.adjust} for p-value adjustment. So these methods provide resampling based p-values with (non-resampling based) p-value adjustment. When \code{pooled = TRUE}, marginal distributions of the test statistics are considered exchangeable for all features.
+#' \insertCite{Reiner2003,Yekutieli1999}{randRotation}.
+#' For all other \code{method} arguments resampling based p-values are calculated and passed to \code{\link[stats:p.adjust]{stats::p.adjust}} for p-value adjustment. So these methods provide resampling based p-values with (non-resampling based) p-value adjustment. When \code{pooled = TRUE}, marginal distributions of the test statistics are considered exchangeable for all features.
 #' The resampling based p-values of each feature are then calculated from all rotated statistics (all features, all rotations). For these cases, if the number of features is reasonably large, usually only few resamples (argument \code{R} in \code{\link[randRotation:rotate.stat]{rotate.stat}}) are required.
 #' When \code{pooled = FALSE} the resampling based p-values are calculcated for each feature separately.
 #' This is required if one expects the resampling based statistics to be distributed differently for individual features. For most common applications this should not be the case and the marginal distribution are exchangeable for all features,
 #' hence \code{pooled = TRUE} by default.
-#' \code{method = "fdr.q"} and \code{method = "fdr.qu"} were adapted from package \code{fdrame} ( ... cite Reiner Yekutieli paper and FDRAME package here - including package version)
-#' @examples
+#' \code{method = "fdr.q"} and \code{method = "fdr.qu"} were adapted from package \code{fdrame} \insertCite{Fdrame2019,Reiner2003}{randRotation}.
+#'
+#' P-values and FDRs are calculated for each column of \code{obj$s0} separately.
+#' @examples # See '?rotate.stat'.
+#' @references \insertAllCited{}
 #' @author Peter Hettegger
 p.fdr <- function(obj, method = "none", pooled = TRUE, na.rm = FALSE, beta = 0.05){
   if(!is(obj, "rotate.stat")) stop("class(obj) must be \"rotate.stat\"")
   if(beta < 0 || beta > 1) stop("beta must be between 0 and 1")
   if(any(is.na(obj$s0)) || any(is.na(unlist(obj$stats)))) warning("Missing values found in obj$s0 or obj$stats. Missing values are tolerated as much as possible, but should be avoided. See \"p.fdr\" help page.")
-
-
 
   method <- match.arg(method, c("fdr.q", "fdr.qu", stats::p.adjust.methods))
 
@@ -892,41 +1153,50 @@ p.fdr <- function(obj, method = "none", pooled = TRUE, na.rm = FALSE, beta = 0.0
                  function(i).p.fdr(obj$s0[,i,drop = TRUE], obj$stats[[i]], method, pooled, na.rm, beta),
                  obj$s0[,1])
 
+  # For the case that there is only one feature.
+  # Otherwise the "colnames(res) = colnames(obj$s0)" fails
+  if(is.null(dim(res)) && (length(res) > 0)){
+    if(obj$ncol.s > 1) res <- rbind(res)
+    else
+      res <- cbind(res)
+  }
+
+
   colnames(res) = colnames(obj$s0)
   res
 }
-#
-# p.fdr.old <- function(obj, na.rm = FALSE){
-#   if(!is(obj, "rotate.stat")) stop("class(obj) must be \"rotate.stat")
-#
-#   cols = seq(from = 1, to = ncol(obj$stats), by = obj$ncol.s)
-#   if(any(rowSums(!is.na(obj$stats)) < 1)) warning("At least one row in stats contains only NAs.")
-#
-#   ps <- sapply(1:obj$ncol.s-1, function(i){
-#     pmax(rowMeans(abs(obj$stats[,cols+i]) >= abs(obj$s0[,i+1]), na.rm = na.rm), 1/rowSums(!is.na(obj$stats[,cols+i])))
-#   })
-#
-# }
 
 
-### inspired by the man page of qqplot
-#' QQ plot of data sample against uniform theoretical quantiles
+#' Quantile-Quantile plot of data sample against uniform theoretical quantiles
 #'
-#' @param ps
-#' @param log
-#' @param variable
+#' \code{qqunif} produces a QQ plot of the values in \code{ps} against the theoretical quantiles of the uniform distribution.
 #'
-#' @return
+#' This function can e.g. be used for comparing p-values against the uniform distribution. The log scale of the x and y axes allow a closer look at low p-values.
+#'
+#' This function is a modified version of the examples in the \code{\link[stats:qqnorm]{qqnorm}} documentation page.
+#'
+#' @param ps \code{numeric} vector of values (e.g. p-values). Values must be between 0 and 1. Values like \code{NA}, NaN, Inf etc. produce an error.
+#' @param log \code{character} indicating whether axis should be plotted in log scale. Either \code{""}, \code{"x"}, \code{"y"} or \code{"xy"}.
+#' @param pch Point symbol, see \code{\link[graphics:par]{par}}.
+#' @param xlab Label for the x axis.
+#' @param ylab Label for the y axis.
+#' @param ... Graphical parameters forwarded to \code{\link[stats:qqnorm]{qqplot}}
+#'
+#' @return \code{qqunif} returns \code{NULL}.
 #' @export
 #'
 #' @examples
+#' qqunif(runif(100))
 qqunif = function(ps, log = "xy", pch = 19, xlab = "theoretical quantiles",
 ylab = "sample quantiles", ...){
+
+  if(any(!is.finite(ps) | ps > 1 | ps < 0)) stop("Values of ps must be between 0 and 1.")
+
   ## Q-Q plot for Unif data against true theoretical distribution
   qqplot(ppoints(ps), ps, main = expression("Q-Q plot for" ~~ {Unif(0,1)}),
          log = log, pch = pch, xlab = xlab, ylab = ylab, ...)
-  qqline(ps, distribution = function(p) qunif(p),
-         probs = c(0.1, 0.6), col = "salmon", lwd = 2)
+  abline(0,1, col = 2,lwd=2,lty=2)
+
 }
 
 
