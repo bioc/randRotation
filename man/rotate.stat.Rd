@@ -4,31 +4,25 @@
 \alias{rotate.stat}
 \title{Generate data rotations and calculate statistics on it}
 \usage{
-rotate.stat(initialised.obj, statistic, statistic.args = list(),
-  R = 10, parallel = FALSE, ncpus = NULL, split.parallel = TRUE,
-  cl = NULL, ...)
+rotate.stat(initialised.obj, R = 10, statistic, ..., parallel = FALSE,
+  BPPARAM = BiocParallel::bpparam())
 }
 \arguments{
 \item{initialised.obj}{An initialised random rotation object as returned by \code{\link[randRotation:init.randrot]{init.randrot}} and \code{\link[randRotation:init.randrot]{init.batch.randrot}}.}
 
+\item{R}{The number of resamples/rotations. Single \code{numeric} larger than 1.}
+
 \item{statistic}{A function that calculates a statistic from a data matrix \code{Y} (see also \code{\link[randRotation:init.randrot]{init.randrot}}) and any further arguments passed to it by \code{statistic.args}.
 Note that \code{\link[randRotation:p.fdr]{p.fdr}} considers larger values of statistics significant, so one-tailed tests may require inversion and two-tailed tests may require taking absolute values.
-The results of \code{statistic} for each resample are finally combined with \code{cbind}, so ensure that \code{statistic} returns either a vector or a matrix with \code{nrow(initialised.obj)} rows.
+The results of \code{statistic} for each resample are finally combined with \code{as.matrix} and \code{cbind}, so ensure that \code{statistic} returns either a vector or a matrix.
 Results with multiple columns are possible and handled adequately in subsequent functions (e.g. \code{\link[randRotation:p.fdr]{p.fdr}}).}
 
-\item{statistic.args}{A list of arguments passed to \code{statistic}, see \code{Examples}.}
-
-\item{R}{The number of resamples/rotations. Single \code{numeric} larger than 1.}
+\item{...}{Further named arguments for \code{statistic} which are passed unchanged each time it is called.
+Avoid partial matching to arguments of \code{rotate.stat}. See also the \code{Examples}.}
 
 \item{parallel}{\code{logical} if parallel computation should be performed, see details for use of parallel computing.}
 
-\item{ncpus}{\code{numeric} number of processes to be used in parallel operation. If not provided,}
-
-\item{split.parallel}{\code{logical} or \code{numeric}, see details.}
-
-\item{cl}{A \code{parallel} or \code{snow} cluster. If no cluster is provided, a cluster is created on the local machine according, see details.}
-
-\item{...}{Further arguments forwarded to \code{\link[foreach:foreach]{foreach::foreach}}. This should only be utilised by experienced users.}
+\item{BPPARAM}{An optional \code{\link[BiocParallel:BiocParallelParam-class]{BiocParallelParam}} instance, see documentation of \code{BiocParallel} package of Bioconductor.}
 }
 \value{
 An object of class \code{\link[randRotation:rotate.stat-class]{rotate.stat}}.
@@ -38,35 +32,40 @@ This function generates rotations of data and calculates the provided \code{stat
 This is the central function of the package.
 }
 \details{
-The function takes an initialised randrot object (\code{\link[randRotation:init.randrot]{init.randrot}}) and a function that calculates a statistic on the data.
-The statistic function thereby takes the a matrix \code{Y} as first argument. Any further arguments are passed to it by \code{statistic.args}.
+The function takes an initialised randrot object
+(\code{\link[randRotation:init.randrot]{init.randrot}}) and a function that
+calculates a statistic on the data. The statistic function thereby takes the
+a matrix \code{Y} as first argument. Any further arguments are passed to it
+by \code{...}.
 
+Be aware that only data is rotated (see also
+\code{\link[randRotation:randrot]{randrot}}), so any additional information
+including \code{weights}, \code{X} etc. need to be provided to
+\code{statistic}. See also package vignette and \code{Examples}.
 
-Be aware that only data is rotated (see also \code{\link[randRotation:randrot]{randrot}}), so any additional information including \code{weights}, \code{X} etc. need to be provided to \code{statistic}.
-See also package vignette and \code{Examples}.
-
-If \code{parallel = TRUE} and no argument \code{cl} is delivered, a cluster is created with the method \code{parallel::makeCluster} with \code{ncpus} cores or (if \code{ncpus = NULL}) with one core less than \code{parallel::detectCores()} returns.
-So the default cluster is generated as \code{parallel::makeCluster(parallel::detectCores()-1)}. If \code{parallel = TRUE} the function calls in \code{statistic} need to be called explicitly with package name and "::".
-So e.g. calling \code{lmFit} from the \code{limma} package is done with \code{limma::lmFit(...)}, see also the examples in the package vignette.
-
-Sometimes it is rewarding to split the resampling loop into smaller loops that are executed on separate cores. E.g. if \code{R = 800} it could be faster to execute 100 rotations on 8 CPUs instead of distributing all
-800 rotations on the 8 CPUs (due to parallelisation overhead), see also the package vignette. This splitting can be done with \code{split.parallel}. \code{split.parallel} could be logic or an integer > 0 specifying the number of cores to split the task.
-If \code{split.parallel} is \code{TRUE}, the number of cores is retrieved with \code{foreach::getDoParWorkers()}.
+Parallel processing is implemented with the BiocParallel package of Bioconductor.
+The default argument\code{\link[BiocParallel:register]{BiocParallel::bpparam()}} for \code{BPPARAM}
+returns the registered default backend.
+See package documentation for further information and usage options.
+If \code{parallel = TRUE} the function calls in \code{statistic} need to be called explicitly
+with package name and "::". So e.g. calling \code{lmFit} from the
+\code{limma} package is done with \code{limma::lmFit(...)}, see also the
+examples in the package vignette.
 }
 \examples{
 #set.seed(0)
 
 # Dataframe of phenotype data (sample information)
 # We simulate 2 sample classes processed in 3 batches
-pdata = data.frame(batch = rep(1:3, c(10,10,10)),
+pdata <- data.frame(batch = rep(1:3, c(10,10,10)),
                    phenotype = rep(c("Control", "Cancer"), c(5,5)))
-features = 100
+features <- 100
 
 # Matrix with random gene expression data
-edata = matrix(rnorm(features * nrow(pdata)), features)
-rownames(edata) = paste("feature", 1:nrow(edata))
+edata <- matrix(rnorm(features * nrow(pdata)), features)
+rownames(edata) <- paste("feature", 1:nrow(edata))
 
-mod1 = model.matrix(~phenotype, pdata)
+mod1 <- model.matrix(~phenotype, pdata)
 
 # Initialisation of the random rotation class
 init1 <- init.batch.randrot(Y = edata, X = mod1, coef.h = 2, batch = pdata$batch)
@@ -86,12 +85,11 @@ statistic <- function(Y, batch, mod, coef){
 }
 
 # We calculate test statistics for the second coefficient
-stat.args = list(batch = pdata$batch, mod = mod1, coef = 2)
 
 res1 <- rotate.stat(initialised.obj = init1,
-                    statistic = statistic,
-                    statistic.args = stat.args,
                     R = 100,
+                    statistic = statistic,
+                    batch = pdata$batch, mod = mod1, coef = 2,
                     parallel = FALSE)
 
 hist(p.fdr(res1))

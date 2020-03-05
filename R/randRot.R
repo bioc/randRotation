@@ -728,23 +728,19 @@ setMethod("randrot", "init.batch.randrot",
 
 #' Generate data rotations and calculate statistics on it
 #'
-#'
-#'
-#'###### CONTINUE HERE - UPDATE DESCRIPTION ACCORDING TO BiocParallel ###
 #' This function generates rotations of data and calculates the provided \code{statistic} on each rotation and the non-rotated (original) data.
 #' This is the central function of the package.
 #'
 #' @param initialised.obj An initialised random rotation object as returned by \code{\link[randRotation:init.randrot]{init.randrot}} and \code{\link[randRotation:init.randrot]{init.batch.randrot}}.
+#' @param R The number of resamples/rotations. Single \code{numeric} larger than 1.
 #' @param statistic A function that calculates a statistic from a data matrix \code{Y} (see also \code{\link[randRotation:init.randrot]{init.randrot}}) and any further arguments passed to it by \code{statistic.args}.
 #' Note that \code{\link[randRotation:p.fdr]{p.fdr}} considers larger values of statistics significant, so one-tailed tests may require inversion and two-tailed tests may require taking absolute values.
-#' The results of \code{statistic} for each resample are finally combined with \code{cbind}, so ensure that \code{statistic} returns either a vector or a matrix with \code{nrow(initialised.obj)} rows.
+#' The results of \code{statistic} for each resample are finally combined with \code{as.matrix} and \code{cbind}, so ensure that \code{statistic} returns either a vector or a matrix.
 #' Results with multiple columns are possible and handled adequately in subsequent functions (e.g. \code{\link[randRotation:p.fdr]{p.fdr}}).
-#' @param statistic.args A list of arguments passed to \code{statistic}, see \code{Examples}.
-#' @param R The number of resamples/rotations. Single \code{numeric} larger than 1.
+#' @param ... Further named arguments for \code{statistic} which are passed unchanged each time it is called.
+#' Avoid partial matching to arguments of \code{rotate.stat}. See also the \code{Examples}.
 #' @param parallel \code{logical} if parallel computation should be performed, see details for use of parallel computing.
-#' @param split.parallel \code{logical} or \code{numeric}, see details.
-#' @param BPPARAM
-#' @param ... Further arguments forwarded to \code{\link[foreach:foreach]{foreach::foreach}}. This should only be utilised by experienced users.
+#' @param BPPARAM An optional \code{\link[BiocParallel:BiocParallelParam-class]{BiocParallelParam}} instance, see documentation of \code{BiocParallel} package of Bioconductor.
 #'
 #' @return An object of class \code{\link[randRotation:rotate.stat-class]{rotate.stat}}.
 #' @rdname rotate.stat
@@ -755,32 +751,21 @@ setMethod("randrot", "init.batch.randrot",
 #' (\code{\link[randRotation:init.randrot]{init.randrot}}) and a function that
 #' calculates a statistic on the data. The statistic function thereby takes the
 #' a matrix \code{Y} as first argument. Any further arguments are passed to it
-#' by \code{statistic.args}.
-#'
+#' by \code{...}.
 #'
 #' Be aware that only data is rotated (see also
 #' \code{\link[randRotation:randrot]{randrot}}), so any additional information
 #' including \code{weights}, \code{X} etc. need to be provided to
 #' \code{statistic}. See also package vignette and \code{Examples}.
 #'
-#' If \code{parallel = TRUE} and no argument \code{cl} is delivered, a cluster
-#' is created with the method \code{parallel::makeCluster} with \code{ncpus}
-#' cores or (if \code{ncpus = NULL}) with one core less than
-#' \code{parallel::detectCores()} returns. So the default cluster is generated
-#' as \code{parallel::makeCluster(parallel::detectCores()-1)}. If \code{parallel
-#' = TRUE} the function calls in \code{statistic} need to be called explicitly
+#' Parallel processing is implemented with the BiocParallel package of Bioconductor.
+#' The default argument\code{\link[BiocParallel:register]{BiocParallel::bpparam()}} for \code{BPPARAM}
+#' returns the registered default backend.
+#' See package documentation for further information and usage options.
+#' If \code{parallel = TRUE} the function calls in \code{statistic} need to be called explicitly
 #' with package name and "::". So e.g. calling \code{lmFit} from the
 #' \code{limma} package is done with \code{limma::lmFit(...)}, see also the
 #' examples in the package vignette.
-#'
-#' Sometimes it is rewarding to split the resampling loop into smaller loops
-#' that are executed on separate cores. E.g. if \code{R = 800} it could be
-#' faster to execute 100 rotations on 8 CPUs instead of distributing all 800
-#' rotations on the 8 CPUs (due to parallelisation overhead), see also the
-#' package vignette. This splitting can be done with \code{split.parallel}.
-#' \code{split.parallel} could be logic or an integer > 0 specifying the number
-#' of cores to split the task. If \code{split.parallel} is \code{TRUE}, the
-#' number of cores is retrieved with \code{BiocParallel::bpnworkers(BPPARAM)}.
 #'
 #' @author Peter Hettegger
 #'
@@ -817,63 +802,51 @@ setMethod("randrot", "init.batch.randrot",
 #' }
 #'
 #' # We calculate test statistics for the second coefficient
-#' stat.args <- list(batch = pdata$batch, mod = mod1, coef = 2)
 #'
 #' res1 <- rotate.stat(initialised.obj = init1,
-#'                     statistic = statistic,
-#'                     statistic.args = stat.args,
 #'                     R = 100,
+#'                     statistic = statistic,
+#'                     batch = pdata$batch, mod = mod1, coef = 2,
 #'                     parallel = FALSE)
 #'
 #' hist(p.fdr(res1))
 
-
-
-##### CONTINUE HERE - update arguments (also in documentation) ####
-rotate.stat <- function(initialised.obj, statistic, statistic.args = list(),
-                        R = 10, parallel = FALSE,
-                        split.parallel = TRUE, BPPARAM = BiocParallel::bpparam(), ...){
+rotate.stat <- function(initialised.obj, R = 10, statistic, ...,
+                        parallel = FALSE,
+                        BPPARAM = BiocParallel::bpparam()){
 
   if(R<1) stop("R must be at least 1")
 
-  if(parallel){
-    my_mapply <- function(...) BiocParallel::bpmapply(BPPARAM = BPPARAM, ...)
-  } else {
-    my_mapply <- mapply
-  }
+  FUN <- {
+    statistic
+    initialised.obj
+    function(j, ...) statistic(Y=randrot(initialised.obj, I.matrix = (j == 1)), ...)
+    }
 
   i <- seq_len(R+1)
 
-  if(parallel && split.parallel){
-    n <- ifelse(isTRUE(split.parallel), BiocParallel::bpnworkers(BPPARAM), as.numeric(split.parallel))
-    message("Parallelisation: Task is split to ", n, " cores")
-    i <- split(i, factor(sort(rank(i)%%n)))
-
-    FUN <- function(j, statistic, initialised.obj, ...) lapply(j, function(j) statistic(Y=randRotation::randrot(initialised.obj, I.matrix = (j == 1)),...))
-
+  if(parallel){
+    stats <- BiocParallel::bplapply(X = i, FUN = FUN, ..., BPPARAM = BPPARAM)
   } else {
-    FUN <- function(j, statistic, initialised.obj, ...) statistic(Y=randRotation::randrot(initialised.obj, I.matrix = (j == 1)),...)
+    stats <- lapply(X = i, FUN = FUN, ...)
   }
-
-  ### CONTINUE HERE - von mapply auf lapply unschreiben ?! ####
-  stats <- my_mapply(FUN, i,
-                     MoreArgs = c(list(statistic = statistic, initialised.obj = initialised.obj), statistic.args),
-                     SIMPLIFY = FALSE) # In order to have a defined output also when the statistic function returns only 1 element (instead of a vector)
-
-  if(parallel && split.parallel) stats <- unlist(stats, recursive = FALSE)
-  stats <- do.call(cbind, stats)
 
   ## The "statistic" function can return results with multiple columns. Thus the
   ## results are organized accordingly in lists (one list element for each
   ## column).
-  s0.i <- seq_len(ncol(stats)/(R+1))
-  ncol.s <- length(s0.i)
-  s0 <- stats[,s0.i,drop = FALSE]
-  stats <- stats[,-s0.i,drop = FALSE]
+
+  stats <- lapply(stats, as.matrix)
+
+  s0 <- stats[[1]]
+  ncol.s <- ncol(s0)
+
+  stats <- stats[-1]
 
   stats <- lapply(
-    split(seq_len(ncol(stats)), factor((seq_len(ncol(stats))-1) %% ncol.s)),
-    function(i)stats[,i,drop = FALSE])
+    seq_len(ncol.s),
+    function(i)
+      do.call(cbind,lapply(stats, function(tmp.stat) tmp.stat[,i,drop = FALSE]))
+    )
 
   names(stats) <- colnames(s0)
 
