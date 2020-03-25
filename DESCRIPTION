@@ -1,27 +1,31 @@
 Package: randRotation
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Title: Random Rotation Methods for Exact Testing with Linear Models on High Dimensional Data
+Version: 0.99.0
 Authors@R: 
     person(given = "Peter",
            family = "Hettegger",
            role = c("aut", "cre"),
-           email = "p.hettegger@gmail.com")
-Description: What the package does (one paragraph).
+           email = "p.hettegger@gmail.com",
+           comment = c(ORCID = "0000-0001-8557-588X"))
+Description: A collection of methods for performing random rotations on high-dimensional data (e.g. microarray or RNA-seq data) for exact linear model inference in data analysis pipelines. The methods are suited for use with linear model inference following arbitrary (non-linear) batch effect correction methods.
 License: GPL-3
+biocViews: Software, Sequencing, BatchEffect, BiomedicalInformatics, RNASeq, Preprocessing, Microarray, DifferentialExpression, GeneExpression, Genetics, MicroRNAArray, Normalization, StatisticalMethod
 Encoding: UTF-8
 LazyData: true
 Imports: 
     methods,
+    graphics,
+    utils,
     stats,
-    Rdpack,
-    foreach,
-    doParallel,
-    parallel
 RoxygenNote: 6.1.1
 RdMacros: Rdpack
 Suggests: 
     knitr,
+    BiocParallel,
+    lme4,
+    Rdpack,
     rmarkdown,
+    BiocStyle,
     testthat (>= 2.1.0),
     limma,
     sva

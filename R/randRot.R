@@ -76,10 +76,16 @@ init.randrot <- function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL,
   coef.h <- sort(coef.h)
   coef.d <- setdiff(seq_len(ncol(X)), coef.h)
   if(length(coef.d > 0) && length(coef.h > 0) && (min(coef.h) < max(coef.d))){
-    message("coef.d ", ifelse(length(coef.d)==1, "does", "do"), " not correspond to the last columns in the design matrix.\nColumns of design matrix are rearranged")
+    message("coef.h ", ifelse(length(coef.d)==1, "does", "do"), " not correspond to the last columns in the design matrix.\nColumns of design matrix are rearranged.")
     X <- X[, c(coef.d, coef.h), drop = FALSE]
     coef.d <- seq_len(length(coef.d))
     coef.h <- seq_len(length(coef.h)) + length(coef.d)
+  }
+
+  rank.xd <- qr(X[,coef.d])$rank
+  if(rank.xd < length(coef.d)){
+    warning("Partitioned design matrix X[,coef.d] does not have full rank.")
+    coef.d <- seq_len(qr(X[,coef.d])$rank)
   }
 
 
@@ -232,14 +238,16 @@ init.randrot.w <- function(Y, X, coef.h, coef.d, weights, cormat,
 #'   NAs.
 #' @param X the design matrix of the experiment with \code{samples x
 #'   coefficients} dimensions. For \code{init.batch.randrot}, specify the design
-#'   matrix without the batch variable.
+#'   matrix without the batch variable. A warning is generated if
+#'   \code{X[,coef.d]} does not have full rank, see Details.
 #' @param coef.h single integer or vector of integers specifying the "hypothesis
 #'   coefficients" (\code{H0} coefficients). \code{coef.h} should correspond to
 #'   the last columns in \code{X} (see \code{Details}). By default, all
 #'   coefficients are set as \code{H0} coefficients. If \code{coef.h} is set
 #'   \code{-1}, no coefficient is set as \code{H0} coefficient.
-#' @param weights numerical matrix of finite positive weights > 0. Dimensions
-#'   must be equal to dimensions of \code{Y}.
+#' @param weights numerical matrix of finite positive weights > 0 (as in
+#'   weighted least squares regression. Dimensions must be equal to dimensions
+#'   of \code{Y}.
 #' @param cormat the sample correlation matrix with \code{samples x samples}
 #'   dimensions. Must be a real symmetric positive-definite square matrix. See
 #'   \code{Details} for usage in \code{init.batch.randrot}.
@@ -271,9 +279,12 @@ init.randrot.w <- function(Y, X, coef.h, coef.d, weights, cormat,
 #' hypothesis ("hypothesis coefficients"). All other model coefficients are
 #' considered as "determined coefficients" \code{coef.d}
 #' \insertCite{Langsrud2005}{randRotation}. The design matrix is rearranged so
-#' that \code{coef.h} correspond to the last columns of the design matrix. This
+#' that \code{coef.h} correspond to the last columns of the design matrix and
+#' \code{coef.d} correspond to the first columns of the design matrix. This
 #' is necessary for adequate transformation of the combined null-hypothesis
 #' \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0} by QR decomposition.
+#' If \code{X[,coef.d]} does not have full rank, a warning is generated and
+#' \code{coef.d} is set to \code{coef.d <- seq_len(qr(X[,coef.d])$rank)}.
 #'
 #'
 #' Weights must be finite positive \code{numerics} greater zero. This is
@@ -285,8 +296,8 @@ init.randrot.w <- function(Y, X, coef.h, coef.d, weights, cormat,
 #' using the arguments \code{weights} and/or \code{cormat}) the rank of the
 #' transformed (whitened) design matrix \code{X} could change (become smaller),
 #' which could become dangerous for the fitting procedures. If you get errors
-#' using weights, try the routine without using weights to exclude this source
-#' of errors.
+#' using \code{weights} and/or \code{cormat}, try the routine without using
+#' \code{weights} and/or \code{cormat} to exclude this source of errors.
 #'
 #'
 #' The following section provides a brief summary how rotations are calculated.
@@ -539,21 +550,23 @@ setMethod("show", "init.randrot",
             cat(dim(object$Yd)[1], "features   ", dim(object$Yd)[2], "samples\n\n")
             cat("Coefficients to test (coef.h):", colnames(object$X)[object$coef.h], "\n\n")
 
-            cat("model matrix (X):\n")
+            cat("design matrix (X):\n")
             print(head(object$X, n = 6))
             if(nrow(object$X) > 6)cat(".\n.\n",nrow(object$X)-6, "more rows\n")
 
             if(!is.null(object$cormat)){
               cat("\ncorrelation matrix (cormat) - showing first 6x6 entries:\n")
-              show.i <- seq_len(min(6, ncol(object$cormat)))
-              print(object$cormat[show.i, show.i])
+              show.i <- seq_len(min(6, nrow(object$cormat)))
+              show.j <- seq_len(min(6, ncol(object$cormat)))
+              print(object$cormat[show.i, show.j, drop = FALSE])
               cat("\n")
             }
 
             if(!is.null(object$w)){
               cat("\nweights - showing first 6x6 entries:\n")
-              show.i <- seq_len(min(6, dim(object$w)))
-              print((object$w[show.i, show.i])^2)
+              show.i <- seq_len(min(6, nrow(object$w)))
+              show.j <- seq_len(min(6, ncol(object$w)))
+              print((object$w[show.i, show.j, drop = FALSE])^2)
               cat("\n")
             }
 
@@ -580,6 +593,23 @@ setMethod("show", "init.batch.randrot",
 
               show(object$batch.obj[[i]])
             }))
+            invisible() # return NULL
+          }
+)
+
+#' @rdname show
+#' @export
+
+setMethod("show", "rotate.stat",
+          function(object)
+          {
+            cat("Rotate stat object\n\n")
+            cat("R =", object$R)
+            cat("\n\ndim(s0):", dim(object$s0))
+            cat("\n\nStatistic:\n")
+            cat(show(object$statistic))
+            cat("\nCall:\n")
+            cat(show(object$call))
             invisible() # return NULL
           }
 )
@@ -850,7 +880,8 @@ rotate.stat <- function(initialised.obj, R = 10, statistic, ...,
 
   names(stats) <- colnames(s0)
 
-  new("rotate.stat", list(s0 = s0, stats = stats, ncol.s = ncol.s, R = R))
+  new("rotate.stat", list(s0 = s0, stats = stats, ncol.s = ncol.s, R = R,
+                          call = sys.call(), statistic = statistic))
 }
 
 
