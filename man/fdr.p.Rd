@@ -23,11 +23,16 @@
 
 \item{na.rm}{\code{logical}. Should missing values be removed ?}
 
-\item{ref.vector}{Reference vector defining at which grid points of \code{s0} and \code{stats} the FDRs are approximated. All other points are approximated by spline interpolation. NAs are removed from ref.vector}
+\item{ref.vector}{Reference vector defining at which grid points of \code{s0}
+and \code{stats} the FDRs are approximated. All other points are
+approximated by spline interpolation. NAs are removed from ref.vector}
 
-\item{method}{A p-value or FDR adjustment method, see \code{\link[randRotation:p.fdr]{p.fdr}}.}
+\item{method}{A p-value or FDR adjustment method, see
+\code{\link[randRotation:p.fdr]{p.fdr}}.}
 
-\item{pooled}{\code{logical}. \code{TRUE} if marginal distributions are exchangeable for all features so that rotated stats can be pooled, see \code{\link[randRotation:p.fdr]{p.fdr}}.}
+\item{pooled}{\code{logical}. \code{TRUE} if marginal distributions are
+exchangeable for all features so that rotated stats can be pooled, see
+\code{\link[randRotation:p.fdr]{p.fdr}}.}
 }
 \value{
 \code{numeric} vector of (adjusted) p-value or FDR estimations for \code{s0}.

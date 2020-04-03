@@ -4,14 +4,19 @@
 \name{show,init.randrot-method}
 \alias{show,init.randrot-method}
 \alias{show,init.batch.randrot-method}
+\alias{show,rotate.stat-method}
 \title{Show an Object}
 \usage{
 \S4method{show}{init.randrot}(object)
 
 \S4method{show}{init.batch.randrot}(object)
+
+\S4method{show}{rotate.stat}(object)
 }
 \arguments{
-\item{object}{An object of class \code{\link[randRotation:init.randrot-class]{init.randrot-class}} or \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.}
+\item{object}{An object of class
+\code{\link[randRotation:init.randrot-class]{init.randrot-class}} or
+\code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.}
 }
 \value{
 \code{show} returns an invisible \code{NULL}.
@@ -20,5 +25,6 @@
 Display the object by printing structured summary information.
 }
 \details{
-The show method always displays the original design matrix (\code{X}), not the transformed (whitened) versions.
+The show method always displays the original design matrix
+  (\code{X}), not the transformed (whitened) versions.
 }

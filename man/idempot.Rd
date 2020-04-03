@@ -2,18 +2,18 @@
 % Please edit documentation in R/randRot.R
 \name{idempot}
 \alias{idempot}
-\title{Idempotency of a mapping function}
+\title{Idempotence of a mapping function}
 \usage{
-idempot(Y, mapping, mapping.args = NULL, iterations = 5,
-  quantile.plot = TRUE, quantiles = seq(0, 1, 0.25), na.rm = FALSE)
+idempot(Y, mapping, ..., iterations = 5, quantile.plot = TRUE,
+  quantiles = seq(0, 1, 0.25), na.rm = FALSE)
 }
 \arguments{
 \item{Y}{A \code{numeric} matrix with \code{featuers x samples} dimensions.}
 
-\item{mapping}{An idempotent mapping function that takes a matrix \code{Y} with \code{features x samples} dimensions and returns a matrix of
-transformed data with the same dimensions. Any further arguments can be passed to mapping through the \code{mapping.args} argument.}
+\item{mapping}{An idempotent mapping function that takes a matrix \code{features x samples} dimensions as first argument and returns a matrix of
+transformed data with the same dimensions. Any further arguments can be passed to \code{mapping} through \code{...}.}
 
-\item{mapping.args}{List of further arguments passed to mapping function.}
+\item{...}{Additional arguments passed to \code{mapping}.}
 
 \item{iterations}{The number of iterations to be calculated.}
 
@@ -27,15 +27,30 @@ transformed data with the same dimensions. Any further arguments can be passed t
 \code{numeric} matrix of quantiles (of differences) for each iteration.
 }
 \description{
-This function provides a tool for illustrating idempotency of a mapping function.
+This function provides a tool for illustrating idempotence (or approximate idempotence) of a mapping function.
 }
 \details{
-An idempotent mapping function \code{m} is a mapping function with the property
-\code{m(Y)} equals \code{m(m(Y))} for a numerical matrix \code{Y}.
-This function calculates several \code{iterations} of the mapping (\code{m(Y), m(m(Y)), m(m(m(Y))), ...}).
-The differences between the sequential mappings (\code{m(Y)-Y, m(m(Y))-m(Y),...}) are calculated and \code{quantiles} of
-the differences are returned and plotted.
+An idempotent mapping function \code{m} is a mapping function with the
+property \code{m(Y)} equals \code{m(m(Y))} for a numerical matrix \code{Y}.
+This function calculates several \code{iterations} of the mapping
+(\code{m(Y), m(m(Y)), m(m(m(Y))), ...}). The differences between the
+sequential mappings (\code{m(Y)-Y, m(m(Y))-m(Y),...}) are calculated and
+\code{quantiles} of the differences are returned and plotted.
 }
 \examples{
-# See example in '?df.estimate'
+# Sample data
+A <- matrix(rnorm(1000), 100, 10)
+
+# idempotent mapping function
+mapping <- function(Y) Y - rowMeans(Y)
+
+idempot(A, mapping)
+
+
+# non-idempotent mapping function
+mapping <- function(Y) Y / 2
+
+idempot(A, mapping)
+
+# See also example in '?df.estimate'
 }

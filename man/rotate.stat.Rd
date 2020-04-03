@@ -12,8 +12,9 @@ rotate.stat(initialised.obj, R = 10, statistic, ..., parallel = FALSE,
 
 \item{R}{The number of resamples/rotations. Single \code{numeric} larger than 1.}
 
-\item{statistic}{A function that calculates a statistic from a data matrix \code{Y} (see also \code{\link[randRotation:init.randrot]{init.randrot}}) and any further arguments passed to it by \code{statistic.args}.
-Note that \code{\link[randRotation:p.fdr]{p.fdr}} considers larger values of statistics significant, so one-tailed tests may require inversion and two-tailed tests may require taking absolute values.
+\item{statistic}{A function which takes a data matrix (same dimensions as \code{Y} - see also \code{\link[randRotation:init.randrot]{init.randrot}}) as first argument and returns a statistic of interest. Any further arguments are passed to it by \code{...}.
+We highly recommend using scale independent statistics if possible (see also \code{Details} in \code{\link[randRotation:p.fdr]{p.fdr}}).
+Note that \code{\link[randRotation:p.fdr]{p.fdr}} considers larger values of statistics as more significant, so one-tailed tests may require reversal of the sign and two-tailed tests may require taking absolute values, see \code{Examples}.
 The results of \code{statistic} for each resample are finally combined with \code{as.matrix} and \code{cbind}, so ensure that \code{statistic} returns either a vector or a matrix.
 Results with multiple columns are possible and handled adequately in subsequent functions (e.g. \code{\link[randRotation:p.fdr]{p.fdr}}).}
 
@@ -73,11 +74,11 @@ init1
 
 # Definition of the batch effect correction procedure with subsequent calculation
 # of two-sided test statistics
-statistic <- function(Y, batch, mod, coef){
+statistic <- function(., batch, mod, coef){
 
   # The "capture.output" and "suppressMessages" simply suppress any output
   capture.output(suppressMessages(
-    Y.tmp <- sva::ComBat(Y, batch = batch, mod)
+    Y.tmp <- sva::ComBat(., batch = batch, mod)
   ))
 
   fit1 <- lm.fit(mod, t(Y.tmp))
@@ -87,10 +88,9 @@ statistic <- function(Y, batch, mod, coef){
 # We calculate test statistics for the second coefficient
 
 res1 <- rotate.stat(initialised.obj = init1,
-                    R = 100,
+                    R = 10,
                     statistic = statistic,
-                    batch = pdata$batch, mod = mod1, coef = 2,
-                    parallel = FALSE)
+                    batch = pdata$batch, mod = mod1, coef = 2)
 
 hist(p.fdr(res1))
 }

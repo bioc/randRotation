@@ -6,14 +6,16 @@
 \alias{init.randrot.w-class}
 \title{Initialised random rotation class}
 \description{
-List-based S4 class containing all information necessary to generate randomly rotated data with the \code{\link[randRotation:randrot]{randrot}} method.
-\code{init.randrot} and \code{init.randrot.w} objects are created with the \code{\link[randRotation:init.randrot]{init.randrot}} method.
+List-based S4 class containing all information necessary to generate randomly
+rotated data with the \code{\link[randRotation:randrot]{randrot}} method.
+\code{init.randrot} and \code{init.randrot.w} objects are created with the
+\code{\link[randRotation:init.randrot]{init.randrot}} method.
 
-\code{init.randrot.w} is organised as its base class \code{init.randrot}, altough some components are changed or added.
+\code{init.randrot.w} is organised as its base class \code{init.randrot},
+altough some components are changed or added.
 }
 \section{Components}{
-
-The following components are included as list elements:
+ The following components are included as list elements:
 \describe{
   \item{\code{X}}{Original (non-transformed) design matrix.}
   \item{\code{Xhe}, \code{Xhe.Y.w}, \code{Yd}}{Pre-multiplied matrix products needed for generation of rotated data (\code{\link[randRotation:randrot]{randrot}}).}
@@ -24,7 +26,8 @@ The following components are included as list elements:
 }
 
 
-The following components are changed or added in \code{init.randrot.w-class} as compared to \code{init.randrot-class}:
+The following components are changed or added in \code{init.randrot.w-class}
+as compared to \code{init.randrot-class}:
 \describe{
   \item{\code{decomp.list}}{List containing \code{Xd}, \code{Xhe} and rank of the transformed/whitened design matrix for each feature, see also \code{\link[randRotation:X.decomp]{X.decomp}}.}
   \item{\code{w}}{Numeric matrix with dimensions \code{features x samples} containing component wise square root of the weight matrix, see \code{\link[randRotation:init.randrot]{init.randrot}}.}

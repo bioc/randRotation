@@ -11,10 +11,14 @@
 \S4method{dim}{init.batch.randrot}(x)
 }
 \arguments{
-\item{x}{An object of class \code{\link[randRotation:init.randrot-class]{init.randrot-class}} or \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.}
+\item{x}{An object of class
+\code{\link[randRotation:init.randrot-class]{init.randrot-class}} or
+\code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.}
 }
 \value{
-Vector of length two with number of \code{features} and number of \code{samples}. See also \code{\link[randRotation:init.randrot]{init.randrot}}.
+Vector of length two with number of \code{features} and number of
+  \code{samples}. See also
+  \code{\link[randRotation:init.randrot]{init.randrot}}.
 }
 \description{
 Retrieve the dimensions of an object.

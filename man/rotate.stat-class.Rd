@@ -5,7 +5,9 @@
 \alias{rotate.stat-class}
 \title{Rotated object containing rotated and non-rotated statistics}
 \description{
-This list based class contains calculated statistics for the original data (\code{s0}) and rotated data (\code{stats}). See also \code{\link[randRotation:rotate.stat]{rotate.stat}}.
+This list based class contains calculated statistics for the original data
+(\code{s0}) and rotated data (\code{stats}). See also
+\code{\link[randRotation:rotate.stat]{rotate.stat}}.
 }
 \section{Components}{
 

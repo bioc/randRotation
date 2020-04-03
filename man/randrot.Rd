@@ -17,26 +17,80 @@ randrot(object, ...)
 \S4method{randrot}{init.batch.randrot}(object, ...)
 }
 \arguments{
-\item{object}{An initialised object of class \code{\link[randRotation:init.randrot-class]{init.randrot-class}} or \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.}
+\item{object}{An initialised object of class
+\code{\link[randRotation:init.randrot-class]{init.randrot-class}} or
+\code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.}
 
-\item{...}{further arguments passed to \code{\link[randRotation:randorth]{randorth}}}
+\item{...}{further arguments passed to
+\code{\link[randRotation:randorth]{randorth}}}
 }
 \value{
-\code{numeric} matrix of rotated data under the specified combined null hypothesis.
+\code{numeric} matrix of rotated data under the specified combined
+  null hypothesis.
 }
 \description{
-Perform random data rotation of a previously initialised object (see \code{\link[randRotation:init.randrot]{init.randrot}}) associated with the null hypothesis \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0}.
+Perform random data rotation of a previously initialised object (see
+\code{\link[randRotation:init.randrot]{init.randrot}}) associated with the
+null hypothesis \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0}.
 }
 \details{
-This function generates a randomly rotated dataset from an initialised randrot object (see \code{\link[randRotation:init.randrot]{init.randrot}}). See also package vignette for application examples.
-Only the numerical matrix of rotated data is returned, no design matrix, weights or other info is return for efficiency purposes. Please consider that
-if you e.g. use \code{weights} or if you use \code{\link[randRotation:rotate.stat]{rotate.stat}}, you may need to forward the design matrix \code{X}, \code{weights} etc. to subsequent anylyses.
-See the example in \code{\link[randRotation:rotate.stat]{rotate.stat}}.
+This function generates a randomly rotated dataset from an initialised
+randrot object (see \code{\link[randRotation:init.randrot]{init.randrot}}).
+See also package vignette for application examples. Only the numerical matrix
+of rotated data is returned, no design matrix, weights or other info is
+return for efficiency purposes. Please consider that if you e.g. use
+\code{weights} or if you use
+\code{\link[randRotation:rotate.stat]{rotate.stat}}, you may need to forward
+the design matrix \code{X}, \code{weights} etc. to subsequent anylyses. See
+the example in \code{\link[randRotation:rotate.stat]{rotate.stat}}.
 
-Details on the calculation of a rotated datset are given in \code{\link[randRotation:init.randrot]{init.randrot}} and \insertCite{Langsrud2005}{randRotation}.
+Details on the calculation of a rotated datset are given in
+\code{\link[randRotation:init.randrot]{init.randrot}} and
+\insertCite{Langsrud2005}{randRotation}.
 }
 \examples{
-# See '?rotate.stat'
+# For further examples see '?rotate.stat' and package vignette.
+
+#set.seed(0)
+
+# Dataframe of phenotype data (sample information)
+# We simulate 2 sample classes processed in 3 batches
+pdata <- data.frame(batch = rep(1:3, c(10,10,10)),
+                   phenotype = rep(c("Control", "Cancer"), c(5,5)))
+features <- 100
+
+# Matrix with random gene expression data
+edata <- matrix(rnorm(features * nrow(pdata)), features)
+rownames(edata) <- paste("feature", 1:nrow(edata))
+
+mod1 <- model.matrix(~phenotype, pdata)
+
+# Initialisation of the random rotation class
+init1 <- init.batch.randrot(Y = edata, X = mod1, coef.h = 2,
+                            batch = pdata$batch)
+init1
+
+### Fit model to original data
+
+fit.orig <- lm.fit(mod1, t(edata))
+head(t(coef(fit.orig)))
+
+### Fit model to rotated data
+
+edata.rot <- randrot(init1)
+fit.rot <- lm.fit(mod1, t(edata.rot))
+head(t(coef(fit.rot)))
+
+
+# Note that the coefficients stay equal if we regress only on the
+# non-hypothesis coefficients
+
+mod0 <- model.matrix(~1, pdata)
+fit.orig0 <- lm.fit(mod0, t(edata))
+fit.rot0  <- lm.fit(mod0, t(edata.rot))
+head(t(coef(fit.orig0)))
+head(t(coef(fit.rot0)))
+
 }
 \references{
 \insertAllCited{}

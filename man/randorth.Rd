@@ -2,7 +2,7 @@
 % Please edit documentation in R/randRot.R
 \name{randorth}
 \alias{randorth}
-\title{Random rotation matrix}
+\title{Random orthogonal matrix}
 \usage{
 randorth(n, type = c("orthonormal", "unitary"), I.matrix = FALSE)
 }
@@ -14,27 +14,35 @@ randorth(n, type = c("orthonormal", "unitary"), I.matrix = FALSE)
 \item{I.matrix}{If \code{TRUE}, the identity matrix is returned.}
 }
 \value{
-A random rotation matrix of dimension \code{n x n}.
+A random orthogonal matrix of dimension \code{n x n}.
 }
 \description{
-Generation of a random \code{n x n} rotation matrix (random orthogonal matrix) distributed with haar measure.
+Generation of a random \code{n x n} (random orthogonal
+matrix).
 }
 \details{
-Adapted from pracma package (\code{\link[pracma:randortho]{pracma::randortho}})
-\insertCite{Stewart1980a}{randRotation}
+A random orthogonal matrix \code{R} is generated in order that \code{t(R)} (for \code{"orthonormal"}) or \code{Conj(t(R))} (for \code{"unitary"}) equals the inverse matrix of \code{R}.
+
+This function was adapted from the pracma package (\code{\link[pracma:randortho]{pracma::randortho}}).
+
+The vectors in the generated random orthogonal matrices are distributed according to the Haar measure over
+\code{O(n)}, where \code{O(n)} is the set of orthogonal matrices of order \code{n}.
+Simplified and somewhat unprofessionally formulated, this means that the random orthogonal
+matrices are distributed "uniformly" in the space of random orthogonal matrices of dimension \code{n x n}.
+See also the \code{Examples} and \insertCite{Stewart1980a,mezzadri2006generate}{randRotation}.
 }
 \examples{
 
-# The following example shows the orthogonality of the random rotation matrix:
-R1 = randorth(4)
+# The following example shows the orthogonality of the random orthogonal matrix:
+R1 <- randorth(4)
 zapsmall(t(R1) \%*\% R1)
 
-R1 = randorth(4, "unitary")
+R1 <- randorth(4, "unitary")
 zapsmall(Conj(t(R1)) \%*\% R1)
 
 # The following example shows the distribution of 2-dimensional random orthogonal vectors
 # on the unit circle.
-tmp1 = vapply(1:200, function(i)randorth(2)[,1], numeric(2))
+tmp1 <- vapply(1:400, function(i)randorth(2)[,1], numeric(2))
 plot(t(tmp1), xlab = "x", ylab = "y")
 
 }

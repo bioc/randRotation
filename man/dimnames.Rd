@@ -11,7 +11,13 @@
 \S4method{dimnames}{init.batch.randrot}(x)
 }
 \arguments{
-\item{x}{An object of class \code{\link[randRotation:init.randrot-class]{init.randrot-class}} or \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.}
+\item{x}{An object of class
+\code{\link[randRotation:init.randrot-class]{init.randrot-class}} or
+\code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot-class}}.}
+}
+\value{
+A \code{list} with names of \code{features} and \code{samples}, see
+  \code{\link[randRotation:init.randrot]{init.randrot}}.
 }
 \description{
 Retrieve the dimnames of an object.

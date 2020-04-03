@@ -21,86 +21,170 @@ init.batch.randrot(Y = NULL, X = NULL, coef.h = NULL, batch = NULL,
   weights = Y$weights, cormat = NULL)
 }
 \arguments{
-\item{Y}{a data matrix with \code{features x samples} dimensions or a list with elements \code{E}, \code{design} and \code{weights} (see \code{Details}). Missing values (\code{\link[base:NA]{NA}}) are allowed but e.g. lead to NAs for all samples of the respective features in the rotated dataset and should thus be avoided. We highly recommend avoiding missing values by e.g. replacing them by imputation or removing features containing NAs.}
+\item{Y}{a data matrix with \code{features x samples} dimensions or a list
+with elements \code{E}, \code{design} and \code{weights} (see
+\code{Details}). Missing values (\code{\link[base:NA]{NA}}) are allowed but
+e.g. lead to NAs for all samples of the respective features in the rotated
+dataset and should thus be avoided. We highly recommend avoiding missing
+values by e.g. replacing them by imputation or removing features containing
+NAs.}
 
-\item{X}{the design matrix of the experiment with \code{samples x coefficients} dimensions.}
+\item{X}{the design matrix of the experiment with \code{samples x
+coefficients} dimensions. For \code{init.batch.randrot}, specify the design
+matrix without the batch variable. A warning is generated if
+\code{X[,coef.d]} does not have full rank, see Details.}
 
-\item{coef.h}{single integer or vector of integers specifying the \code{H_0} coefficients. \code{coef.h} should correspond to the last columns in \code{X} (see \code{Details}). By default, all coefficients are set as \code{H_0} coefficients. If \code{coef.h} is set \code{-1}, no coefficient is set as \code{H_0} coefficient.}
+\item{coef.h}{single integer or vector of integers specifying the "hypothesis
+coefficients" (\code{H0} coefficients). \code{coef.h} should correspond to
+the last columns in \code{X} (see \code{Details}). By default, all
+coefficients are set as \code{H0} coefficients. If \code{coef.h} is set
+\code{-1}, no coefficient is set as \code{H0} coefficient.}
 
-\item{weights}{numerical matrix of finite positive weights > 0. Dimensions must be equal to dimensions of \code{Y}.}
+\item{weights}{numerical matrix of finite positive weights > 0 (as in
+weighted least squares regression. Dimensions must be equal to dimensions
+of \code{Y}.}
 
-\item{cormat}{the sample correlation matrix with \code{samples x samples} dimensions. Must be a real symmetric positive-definite square matrix. See \code{Details} for usage in \code{init.batch.randrot}.}
+\item{cormat}{the sample correlation matrix with \code{samples x samples}
+dimensions. Must be a real symmetric positive-definite square matrix. See
+\code{Details} for usage in \code{init.batch.randrot}.}
 
 \item{batch}{Batch covariate of the same length as \code{ncol(Y)}.}
 }
 \value{
-An initialised \code{\link[randRotation:init.randrot-class]{init.randrot}}, \code{\link[randRotation:init.randrot-class]{init.randrot.w}} or \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot}} object.
+An initialised
+  \code{\link[randRotation:init.randrot-class]{init.randrot}},
+  \code{\link[randRotation:init.randrot-class]{init.randrot.w}} or
+  \code{\link[randRotation:init.batch.randrot-class]{init.batch.randrot}}
+  object.
 }
 \description{
-Initialization of a linear model for subsequent generation of randomly rotated data (\code{\link[randRotation:randrot]{randrot}}) associated with the null hypothesis
-\eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0}. Basics of rotation tests are found in \insertCite{Langsrud2005}{randRotation}.
+Initialization of a linear model for subsequent generation of randomly
+rotated data (\code{\link[randRotation:randrot]{randrot}}) associated with
+the null hypothesis \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0}.
+Basics of rotation tests are found in
+\insertCite{Langsrud2005}{randRotation}.
 }
 \details{
-This function performs basic initial checks and preparatory calculations for random rotation data generation, see \insertCite{Langsrud2005}{randRotation}.
-Nomenclature of variables is mainly as in \insertCite{Langsrud2005}{randRotation}. See also package vignette for application examples.
+This function performs basic initial checks and preparatory calculations for
+random rotation data generation, see \insertCite{Langsrud2005}{randRotation}.
+Nomenclature of variables is mainly as in
+\insertCite{Langsrud2005}{randRotation}. See also package vignette for
+application examples.
 
-\code{Y} can also be a list with elements \code{E}, \code{design} and \code{weights}. \code{Y$E} is thereby used as \code{Y}, \code{Y$design} is used as \code{X} and \code{Y$weights} is used as \code{weights}. By this,
-the functions are compatible with results from e.g. \code{voom} (\code{limma} package), see \code{Examples}.
+\code{Y} can also be a list with elements \code{E}, \code{design} and
+\code{weights}. \code{Y$E} is thereby used as \code{Y}, \code{Y$design} is
+used as \code{X} and \code{Y$weights} is used as \code{weights}. By this, the
+functions are compatible with results from e.g. \code{voom} (\code{limma}
+package), see \code{Examples}.
 
-\code{coef.h} specifies the model coefficients associated with the null hypothesis ("hypothesis coefficients"). All other model coefficients are considered as "determined coefficients" \code{coef.d} \insertCite{Langsrud2005}{randRotation}.
-The design matrix is rearranged so that \code{coef.h} correspond to the last columns of the design matrix. This is necessary for adequate transformation of the combined null-hypothesis \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0} by QR decomposition.
+\code{coef.h} specifies the model coefficients associated with the null
+hypothesis ("hypothesis coefficients"). All other model coefficients are
+considered as "determined coefficients" \code{coef.d}
+\insertCite{Langsrud2005}{randRotation}. The design matrix is rearranged so
+that \code{coef.h} correspond to the last columns of the design matrix and
+\code{coef.d} correspond to the first columns of the design matrix. This
+is necessary for adequate transformation of the combined null-hypothesis
+\eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0} by QR decomposition.
+If \code{X[,coef.d]} does not have full rank, a warning is generated and
+\code{coef.d} is set to \code{coef.d <- seq_len(qr(X[,coef.d])$rank)}.
 
 
-Weights must be finite positive \code{numerics} greater zero. This is necessary for model (QR) decomposition and for backtransformation of the rotated data into the original variance structure, see also \code{\link[randRotation:randrot]{randrot}}.
-Weights as estimated e.g. by voom \insertCite{Law2014}{randRotation} are suitable and can be used without further processing. Note that due to the whitening
-transformation (i.e. by using the arguments \code{weights} and/or \code{cormat}) the rank of the transformed (whitened) design matrix \code{X} could change (become smaller),
-which could become dangerous for the fitting procedures. If you get errors using weights, try the routine without using weights to exclude this source of errors.
+Weights must be finite positive \code{numerics} greater zero. This is
+necessary for model (QR) decomposition and for backtransformation of the
+rotated data into the original variance structure, see also
+\code{\link[randRotation:randrot]{randrot}}. Weights as estimated e.g. by
+voom \insertCite{Law2014}{randRotation} are suitable and can be used without
+further processing. Note that due to the whitening transformation (i.e. by
+using the arguments \code{weights} and/or \code{cormat}) the rank of the
+transformed (whitened) design matrix \code{X} could change (become smaller),
+which could become dangerous for the fitting procedures. If you get errors
+using \code{weights} and/or \code{cormat}, try the routine without using
+\code{weights} and/or \code{cormat} to exclude this source of errors.
 
 
-The following section provides a brief summary how rotations are calculated. A more general introduction is given in \insertCite{Langsrud2005}{randRotation}
-For reasons of readability, we omit writing \code{\%*\%} for matrix multiplication and write \code{*} for transposed matrix.
-The rotation is done by multiplying the \code{features x samples} data matrix \code{Y} with the transpose of the restricted random rotation matrix \code{Rt}
+The following section provides a brief summary how rotations are calculated.
+A more general introduction is given in
+\insertCite{Langsrud2005}{randRotation} For reasons of readability, we omit
+writing \code{\%*\%} for matrix multiplication and write \code{*} for
+transposed matrix. The rotation is done by multiplying the \code{features x
+samples} data matrix \code{Y} with the transpose of the restricted random
+rotation matrix \code{Rt}
 
 \code{Rt = Xd Xd* + [Xh  Xe] R [Xh  Xe]*}
 
-with \code{R} being a (reduced) random rotation matrix and \code{Xd}, \code{Xh} and \code{Xe} being columns of the full QR decomposition of the design matrix \code{X}.
-\code{[Xd Xh Xe] = qr.Q(qr(X), complete = TRUE)}, where \code{Xd} correspond to columns \code{coef.d}, \code{Xh} to columns \code{coef.h} and \code{Xe} to the remaining columns.
+with \code{R} being a (reduced) random rotation matrix and \code{Xd},
+\code{Xh} and \code{Xe} being columns of the full QR decomposition of the
+design matrix \code{X}. \code{[Xd Xh Xe] = qr.Q(qr(X), complete = TRUE)},
+where \code{Xd} correspond to columns \code{coef.d}, \code{Xh} to columns
+\code{coef.h} and \code{Xe} to the remaining columns.
 
-If \code{weights} and/or \code{cormat} are specified, each feature \code{Y[i,]} and the design matrix \code{X} are whitening transformed before rotation.
-The whitening matrix \code{T} is defined as \code{T = solve(C) w}, where \code{solve(C)} is the inverse Cholesky decompostion of the correlation matrix (\code{cormat = CC*}) and
-\code{w} is a diagonal matrix of the square roots of the sample weights for the according feature (\code{w = diag(sqrt(weights[i,]}))).
+If \code{weights} and/or \code{cormat} are specified, each feature
+\code{Y[i,]} and the design matrix \code{X} are whitening transformed before
+rotation. The whitening matrix \code{T} is defined as \code{T = solve(C) w},
+where \code{solve(C)} is the inverse Cholesky decompostion of the correlation
+matrix (\code{cormat = CC*}) and \code{w} is a diagonal matrix of the square
+roots of the sample weights for the according feature (\code{w =
+diag(sqrt(weights[i,]}))).
 
 The rotated data for one feature \code{y.r[i,]} is thus calculated as
 
-\code{y.r[i,] = ( solve(T) Rt T (y[i,])* )*} and
-\code{[Xd Xh Xe] = qr.Q(qr(TX), complete = TRUE)}
+\code{y.r[i,] = ( solve(T) Rt T (y[i,])* )*} and \code{[Xd Xh Xe] =
+qr.Q(qr(TX), complete = TRUE)}
 
-For \code{weights = NULL} and \code{cormat = NULL}, \code{T} is the identity matrix.
+For \code{weights = NULL} and \code{cormat = NULL}, \code{T} is the identity
+matrix.
 
-Note that a separate QR decomposition is calculated for each feature if \code{weights} are specified.
-The restricted random orthogonal matrix \code{Rt} is calculated with the same reduced random rotation matrix \code{R} for all features.
+Note that a separate QR decomposition is calculated for each feature if
+\code{weights} are specified. The restricted random orthogonal matrix
+\code{Rt} is calculated with the same reduced random rotation matrix \code{R}
+for all features.
 
-When using \code{init.batch.randrot}, \code{init.randrot} is called for each batch separately. When using \code{init.batch.randrot} with \code{cormat}, \code{cormat} needs to be a list of correlation matrices with one matrix for each batch.
-Note that this implicitly assumes a block design of the sample correlation matrix, where sample correlation coefficients between batches are zero. For a more general sample correlation matrix, allowing non-zero sample correlation coefficients between batches, see package vignette.
-Batches are split according to \code{split(seq_along(batch), batch)}.
+When using \code{init.batch.randrot}, \code{init.randrot} is called
+  for each batch separately. When using \code{init.batch.randrot} with
+  \code{cormat}, \code{cormat} needs to be a list of correlation matrices
+  with one matrix for each batch. Note that this implicitly assumes a block
+  design of the sample correlation matrix, where sample correlation
+  coefficients between batches are zero. For a more general sample
+  correlation matrix, allowing non-zero sample correlation coefficients
+  between batches, see package vignette. Batches are split according to
+  \code{split(seq_along(batch), batch)}.
 }
 \examples{
+# For further examples see '?rotate.stat' and package vignette.
 
-# Compatibility with limma::voom
+# Example 1: Compatibility with limma::voom
 
 \dontrun{
 v <- voom(counts, design)
 ir <- init.randrot(v)}
 
-# For further examples see '?rotate.stat' and package vignette.
+# Example 2:
 
+#set.seed(0)
+
+# Dataframe of phenotype data (sample information)
+# We simulate 2 sample classes processed in 3 batches
+pdata <- data.frame(batch = rep(1:3, c(10,10,10)),
+                   phenotype = rep(c("Control", "Cancer"), c(5,5)))
+features <- 100
+
+# Matrix with random gene expression data
+edata <- matrix(rnorm(features * nrow(pdata)), features)
+rownames(edata) <- paste("feature", 1:nrow(edata))
+
+mod1 <- model.matrix(~phenotype, pdata)
+
+# Initialisation of the random rotation class
+init1 <- init.batch.randrot(Y = edata, X = mod1, coef.h = 2, batch = pdata$batch)
+init1
 # See '?rotate.stat'
 }
 \references{
 \insertAllCited{}
 }
 \seealso{
-\code{\link[randRotation:randrot]{randrot}}, \code{\link[randRotation:rotate.stat]{rotate.stat}}
+\code{\link[randRotation:randrot]{randrot}},
+  \code{\link[randRotation:rotate.stat]{rotate.stat}}
 }
 \author{
 Peter Hettegger

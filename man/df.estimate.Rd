@@ -4,18 +4,18 @@
 \alias{df.estimate}
 \title{Estimation of degrees of freedom (df) for idempotent mapping}
 \usage{
-df.estimate(initialised.obj, mapping, mapping.args = NULL, R = 100)
+df.estimate(initialised.obj, R = 100, mapping, ...)
 }
 \arguments{
-\item{initialised.obj}{initialised.obj An initialised random rotation object as returned by \code{\link[randRotation:init.randrot]{init.randrot}} and \code{\link[randRotation:init.randrot]{init.batch.randrot}}.
+\item{initialised.obj}{An initialised random rotation object as returned by \code{\link[randRotation:init.randrot]{init.randrot}} and \code{\link[randRotation:init.randrot]{init.batch.randrot}}.
 Currently, customised correlation matrices \code{cormat} (see \code{\link[randRotation:init.randrot]{init.randrot}}) are not allowed. Sample \code{weights} are allowed.}
 
-\item{mapping}{An idempotent mapping function that takes a matrix \code{Y} with \code{features x samples} dimensions and returns a matrix of
-transformed data with the same dimensions. Any further arguments can be passed to mapping through the \code{mapping.args} argument.}
-
-\item{mapping.args}{List of further arguments passed to mapping function.}
-
 \item{R}{Number of resampling replicates.}
+
+\item{mapping}{An idempotent mapping function that takes a matrix \code{features x samples} dimensions as first argument and returns a matrix of
+transformed data with the same dimensions. Any further arguments can be passed to \code{mapping} through \code{...}.}
+
+\item{...}{Additional arguments passed to \code{mapping}.}
 }
 \value{
 A vector of estimated df for each feature.
@@ -24,6 +24,11 @@ A vector of estimated df for each feature.
 Estimation of degrees of freedom (df) for idempotent mapping
 }
 \details{
+This function estimates the degrees of freedom of an arbitrary idempotent \code{mapping} function. The degrees of freedom
+are thereby estimated as the rank of the Jacobian of the mapping. It is thus the rank of the local linear approximation of the mapping function.
+Local means that the mapping is practically linearised around the expected value of mapped rotated datasets.
+
+An estimation of df is generated for each feature.
 The mapping/transformation function can also be approximately idempotent. The function produces an error if
 a correlation matrix \code{cormat} (\code{\link[randRotation:init.randrot]{init.randrot}}) was specified when the random rotation object was initialised.
 \code{weights} are allowed.
@@ -33,29 +38,30 @@ a correlation matrix \code{cormat} (\code{\link[randRotation:init.randrot]{init.
 
 # Dataframe of phenotype data (sample information)
 # We simulate 2 sample classes processed in 3 batches
-pdata = data.frame(batch = rep(1:3, c(10,10,10)),
+pdata <- data.frame(batch = rep(1:3, c(10,10,10)),
                    phenotype = rep(c("Control", "Cancer"), c(5,5)))
-features = 100
+features <- 100
 
 # Matrix with random gene expression data
-edata = matrix(rnorm(features * nrow(pdata)), features)
-rownames(edata) = paste("feature", 1:nrow(edata))
+edata <- matrix(rnorm(features * nrow(pdata)), features)
+rownames(edata) <- paste("feature", 1:nrow(edata))
 
-mod1 = model.matrix(~phenotype, pdata)
+mod1 <- model.matrix(~phenotype, pdata)
 
 # Initialisation of the random rotation class
-init1 <- init.batch.randrot(Y = edata, X = mod1, coef.h = 2, batch = pdata$batch)
+init1 <- init.batch.randrot(Y = edata, X = mod1, coef.h = 2,
+                            batch = pdata$batch)
 
-mapping = function(Y, batch, mod) {
+# The Combat function is a commonly used function for batch effec correction:
+mapping <- function(Y, batch, mod) {
   sva::ComBat(Y, batch, mod)
 }
 
-mapping.args = list(batch = pdata$batch, mod = mod1)
 
-# Illustrate approximate idempotency of mapping function
-idempot(edata, mapping, mapping.args)
+# Illustrate approximate idempotence of mapping function
+idempot(edata, mapping = mapping, batch = pdata$batch, mod = mod1)
 
-dfs = df.estimate(init1, mapping, mapping.args)
+dfs <- df.estimate(init1, mapping = mapping, batch = pdata$batch, mod = mod1)
 hist(dfs)
 summary(dfs)
 }

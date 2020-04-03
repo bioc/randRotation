@@ -10,7 +10,7 @@ p.fdr(obj, method = "none", pooled = TRUE, na.rm = FALSE,
 \arguments{
 \item{obj}{A \code{rotate.stat} object as returned by \code{\link[randRotation:rotate.stat]{rotate.stat}}.}
 
-\item{method}{Can be either \code{"none"}, \code{"fdr.q"}, \code{"fdr.qu"} or any term that can be passed as \code{method} argument to \code{\link[stats:p.adjust]{stats::p.adjust}}, see \code{Details}. If \code{method = "none"}, resampling based
+\item{method}{Can be either \code{"none"} (default), \code{"fdr.q"}, \code{"fdr.qu"} or any term that can be passed as \code{method} argument to \code{\link[stats:p.adjust]{stats::p.adjust}}, see \code{Details}. If \code{method = "none"}, resampling based
 p-values without further adjustment are calculated.}
 
 \item{pooled}{\code{logical}. \code{TRUE} (default) if marginal distributions are exchangeable for all features so that rotated stats can be pooled, see \code{Details}.}
@@ -23,22 +23,58 @@ p-values without further adjustment are calculated.}
 A \code{numeric} matrix of corrected p-values or FDRs with dimension \code{dim(obj$s0)}.
 }
 \description{
-This function calculates either (1) resampling based p-values with subsequent p-value adjustment using \code{\link[stats:p.adjust]{stats::p.adjust}} or (2) resampling based false-discovery-rates (FDRs) for rotated statistics from a \code{\link[randRotation:rotate.stat]{rotate.stat}} object.
+This function calculates either (1) resampling based p-values with subsequent
+p-value adjustment using \code{\link[stats:p.adjust]{stats::p.adjust}} or (2)
+resampling based false-discovery-rates (FDRs) for rotated statistics from a
+\code{\link[randRotation:rotate.stat]{rotate.stat}} object.
 }
 \details{
-Larger values of obj$s0 are considered more significant when compared to the empirical distribution. E.g. for calculation of resampling based p-values (with \code{pooled = FALSE}) we in principle use
-\code{p.val <- rowMeans(obj$stats >= obj$s0)}. We take \code{>=} instead of \code{>} when comparing rotated statistics against non-rotated statistics, as this is safer for discrete statistics.
+Larger values of obj$s0 are considered more significant when
+  compared to the empirical distribution. E.g. for calculation of resampling
+  based p-values (with \code{pooled = FALSE}) we in principle use \code{p.val
+  <- rowMeans(obj$stats >= obj$s0)}. We take \code{>=} instead of \code{>}
+  when comparing rotated statistics against non-rotated statistics, as this
+  is safer for discrete statistics.
 
-\code{method = "fdr.q"} and \code{method = "fdr.qu"} are resampling based fdr estimates and can only be used with \code{pooled = TRUE}. \code{method = "fdr.q"} is the FDR local estimator and \code{method = "fdr.qu"} is the FDR upper limit, see
-\insertCite{Reiner2003,Yekutieli1999}{randRotation}.
-For all other \code{method} arguments resampling based p-values are calculated and passed to \code{\link[stats:p.adjust]{stats::p.adjust}} for p-value adjustment. So these methods provide resampling based p-values with (non-resampling based) p-value adjustment. When \code{pooled = TRUE}, marginal distributions of the test statistics are considered exchangeable for all features.
-The resampling based p-values of each feature are then calculated from all rotated statistics (all features, all rotations). For these cases, if the number of features is reasonably large, usually only few resamples (argument \code{R} in \code{\link[randRotation:rotate.stat]{rotate.stat}}) are required.
-When \code{pooled = FALSE} the resampling based p-values are calculcated for each feature separately.
-This is required if one expects the resampling based statistics to be distributed differently for individual features. For most common applications this should not be the case and the marginal distribution are exchangeable for all features,
-hence \code{pooled = TRUE} by default.
-\code{method = "fdr.q"} and \code{method = "fdr.qu"} were adapted from package \code{fdrame} \insertCite{Fdrame2019,Reiner2003}{randRotation}.
+  \code{method = "fdr.q"} and \code{method = "fdr.qu"} are resampling based
+  fdr estimates and can only be used with \code{pooled = TRUE}. \code{method
+  = "fdr.q"} is the FDR local estimator and \code{method = "fdr.qu"} is the
+  FDR upper limit, see \insertCite{Reiner2003,Yekutieli1999}{randRotation}.
+  For all other \code{method} arguments resampling based p-values are
+  calculated and passed to \code{\link[stats:p.adjust]{stats::p.adjust}} for
+  p-value adjustment. So these methods provide resampling based p-values with
+  (non-resampling based) p-value adjustment.
 
-P-values and FDRs are calculated for each column of \code{obj$s0} separately.
+  When \code{pooled = TRUE},
+  marginal distributions of the test statistics are considered exchangeable
+  for all features. The resampling based p-values of each feature are then
+  calculated from all rotated statistics (all features, all rotations). For
+  these cases, if the number of features is reasonably large, usually only
+  few resamples (argument \code{R} in
+  \code{\link[randRotation:rotate.stat]{rotate.stat}}) are required.
+  We want to emphasize that in order for the marginal distributions to be
+  exchangeable, the statistics must be scale independent.
+  Scale independent statistics are e.g. t values. Using e.g. linear models
+  with \code{coef} as statistics is questionable if the different features
+  are measured on different scales. The resampled coefficients then
+  have different variances and \code{pooled = TRUE} is not applicable.
+  We thus highly recommend using \code{statistics} which are scale
+  independent in \code{\link[randRotation:rotate.stat]{rotate.stat}}
+  if possible.
+
+  When \code{pooled = FALSE} the resampling based p-values are calculcated
+  for each feature separately. This is required if one expects the resampling
+  based statistics to be distributed differently for individual features. For
+  most common applications this should not be the case and the marginal
+  distribution are exchangeable for all features, hence \code{pooled = TRUE}
+  by default.
+
+  \code{method = "fdr.q"} and \code{method = "fdr.qu"} were
+  adapted from package \code{fdrame}
+  \insertCite{Fdrame2019,Reiner2003}{randRotation}.
+
+  P-values and FDRs are calculated for each column of \code{obj$s0}
+  separately.
 }
 \examples{
 # See '?rotate.stat'.

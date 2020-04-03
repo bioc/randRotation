@@ -5,7 +5,10 @@
 \alias{init.batch.randrot-class}
 \title{Initialised random rotation batch object}
 \description{
-This class contains \code{init.randrot} or \code{init.randrot.w} class objects for each batch. See also descriptions in \code{\link[randRotation:init.randrot]{init.randrot}} and \code{\link[randRotation:init.randrot-class]{init.randrot-class}}.
+This class contains \code{init.randrot} or \code{init.randrot.w} class
+objects for each batch. See also descriptions in
+\code{\link[randRotation:init.randrot]{init.randrot}} and
+\code{\link[randRotation:init.randrot-class]{init.randrot-class}}.
 }
 \section{Components}{
 

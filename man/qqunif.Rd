@@ -8,9 +8,11 @@ qqunif(ps, log = "xy", pch = 19, xlab = "theoretical quantiles",
   ylab = "sample quantiles", ...)
 }
 \arguments{
-\item{ps}{\code{numeric} vector of values (e.g. p-values). Values must be between 0 and 1. Values like \code{NA}, NaN, Inf etc. produce an error.}
+\item{ps}{\code{numeric} vector of values (e.g. p-values). Values must be
+between 0 and 1. Values like \code{NA}, NaN, Inf etc. produce an error.}
 
-\item{log}{\code{character} indicating whether axis should be plotted in log scale. Either \code{""}, \code{"x"}, \code{"y"} or \code{"xy"}.}
+\item{log}{\code{character} indicating whether axis should be plotted in log
+scale. Either \code{""}, \code{"x"}, \code{"y"} or \code{"xy"}.}
 
 \item{pch}{Point symbol, see \code{\link[graphics:par]{par}}.}
 
@@ -24,12 +26,16 @@ qqunif(ps, log = "xy", pch = 19, xlab = "theoretical quantiles",
 \code{qqunif} returns \code{NULL}.
 }
 \description{
-\code{qqunif} produces a QQ plot of the values in \code{ps} against the theoretical quantiles of the uniform distribution.
+\code{qqunif} produces a QQ plot of the values in \code{ps} against the
+theoretical quantiles of the uniform distribution.
 }
 \details{
-This function can e.g. be used for comparing p-values against the uniform distribution. The log scale of the x and y axes allow a closer look at low p-values.
+This function can e.g. be used for comparing p-values against the uniform
+distribution. The log scale of the x and y axes allow a closer look at low
+p-values.
 
-This function is a modified version of the examples in the \code{\link[stats:qqnorm]{qqnorm}} documentation page.
+This function is a modified version of the examples in the
+\code{\link[stats:qqnorm]{qqnorm}} documentation page.
 }
 \examples{
 qqunif(runif(100))
