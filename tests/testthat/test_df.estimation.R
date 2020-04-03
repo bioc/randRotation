@@ -1,4 +1,4 @@
-test_that("Test df.estimation", {
+test_that("Test df.estimation and idempot", {
   set.seed(0)
   # Dataframe of phenotype data (sample information)
   pdata = data.frame(batch = rep(1:3, c(10,10,10)),
@@ -22,13 +22,13 @@ test_that("Test df.estimation", {
 
     Y.tmp
   }
-  mapping.args = list(batch = pdata$batch, mod = mod1)
 
-  idempot(edata, mapping = mapping, mapping.args = mapping.args)
+  idempot(edata, mapping = mapping, batch = pdata$batch, mod = mod1)
 
   dfs <- df.estimate(initialised.obj = init1,
               mapping = mapping,
-              mapping.args = mapping.args, R = 100)
+              batch = pdata$batch, mod = mod1,
+              R = 100)
 
   expect_equal(median(dfs), 29, tolerance = 1)
 

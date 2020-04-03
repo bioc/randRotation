@@ -1,5 +1,5 @@
 Package: randRotation
-Title: Random Rotation Methods for Exact Testing with Linear Models on High Dimensional Data
+Title: Random Rotation Methods for High Dimensional Data with Batch Structure
 Version: 0.99.0
 Authors@R: 
     person(given = "Peter",
@@ -7,7 +7,9 @@ Authors@R:
            role = c("aut", "cre"),
            email = "p.hettegger@gmail.com",
            comment = c(ORCID = "0000-0001-8557-588X"))
-Description: A collection of methods for performing random rotations on high-dimensional data (e.g. microarray or RNA-seq data) for exact linear model inference in data analysis pipelines. The methods are suited for use with linear model inference following arbitrary (non-linear) batch effect correction methods.
+Description: A collection of methods for performing random orthogonal transformations (random rotations) on high-dimensional data (e.g. microarray or RNA-seq data) with batch structure.
+    The random rotation approach allows exact testing of dependent test statistics with linear models following arbitrary (particularly non-linear) batch effect correction methods.
+    The package further provides methods for estimating the local degrees of freedom (consumption) of idempotent (or approximately idempotent) data mappings.
 License: GPL-3
 biocViews: Software, Sequencing, BatchEffect, BiomedicalInformatics, RNASeq, Preprocessing, Microarray, DifferentialExpression, GeneExpression, Genetics, MicroRNAArray, Normalization, StatisticalMethod
 Encoding: UTF-8

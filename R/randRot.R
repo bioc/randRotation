@@ -1,4 +1,9 @@
-
+#' Random Rotation Methods for Exact Testing with Linear Models on High
+#' Dimensional Data
+#'
+#' @details
+#' Please refer to the package vignette for further details on usage.
+"_PACKAGE"
 
 
 
@@ -763,8 +768,9 @@ setMethod("randrot", "init.batch.randrot",
 #'
 #' @param initialised.obj An initialised random rotation object as returned by \code{\link[randRotation:init.randrot]{init.randrot}} and \code{\link[randRotation:init.randrot]{init.batch.randrot}}.
 #' @param R The number of resamples/rotations. Single \code{numeric} larger than 1.
-#' @param statistic A function that calculates a statistic from a data matrix \code{Y} (see also \code{\link[randRotation:init.randrot]{init.randrot}}) and any further arguments passed to it by \code{statistic.args}.
-#' Note that \code{\link[randRotation:p.fdr]{p.fdr}} considers larger values of statistics significant, so one-tailed tests may require inversion and two-tailed tests may require taking absolute values.
+#' @param statistic A function which takes a data matrix (same dimensions as \code{Y} - see also \code{\link[randRotation:init.randrot]{init.randrot}}) as first argument and returns a statistic of interest. Any further arguments are passed to it by \code{...}.
+#' We highly recommend using scale independent statistics if possible (see also \code{Details} in \code{\link[randRotation:p.fdr]{p.fdr}}).
+#' Note that \code{\link[randRotation:p.fdr]{p.fdr}} considers larger values of statistics as more significant, so one-tailed tests may require reversal of the sign and two-tailed tests may require taking absolute values, see \code{Examples}.
 #' The results of \code{statistic} for each resample are finally combined with \code{as.matrix} and \code{cbind}, so ensure that \code{statistic} returns either a vector or a matrix.
 #' Results with multiple columns are possible and handled adequately in subsequent functions (e.g. \code{\link[randRotation:p.fdr]{p.fdr}}).
 #' @param ... Further named arguments for \code{statistic} which are passed unchanged each time it is called.
@@ -820,11 +826,11 @@ setMethod("randrot", "init.batch.randrot",
 #'
 #' # Definition of the batch effect correction procedure with subsequent calculation
 #' # of two-sided test statistics
-#' statistic <- function(Y, batch, mod, coef){
+#' statistic <- function(., batch, mod, coef){
 #'
 #'   # The "capture.output" and "suppressMessages" simply suppress any output
 #'   capture.output(suppressMessages(
-#'     Y.tmp <- sva::ComBat(Y, batch = batch, mod)
+#'     Y.tmp <- sva::ComBat(., batch = batch, mod)
 #'   ))
 #'
 #'   fit1 <- lm.fit(mod, t(Y.tmp))
@@ -834,10 +840,9 @@ setMethod("randrot", "init.batch.randrot",
 #' # We calculate test statistics for the second coefficient
 #'
 #' res1 <- rotate.stat(initialised.obj = init1,
-#'                     R = 100,
+#'                     R = 10,
 #'                     statistic = statistic,
-#'                     batch = pdata$batch, mod = mod1, coef = 2,
-#'                     parallel = FALSE)
+#'                     batch = pdata$batch, mod = mod1, coef = 2)
 #'
 #' hist(p.fdr(res1))
 
@@ -848,9 +853,10 @@ rotate.stat <- function(initialised.obj, R = 10, statistic, ...,
   if(R<1) stop("R must be at least 1")
 
   FUN <- {
+    # This definition is necessary for parallel processing
     statistic
     initialised.obj
-    function(j, ...) statistic(Y=randrot(initialised.obj, I.matrix = (j == 1)), ...)
+    function(j, ...) statistic(randrot(initialised.obj, I.matrix = (j == 1)), ...)
     }
 
   i <- seq_len(R+1)
@@ -928,26 +934,26 @@ setMethod("dimnames", "init.batch.randrot",
           function(x)list(rownames(x$batch.obj[[1]]$Yd),
                           unlist(lapply(x$split.by, names), use.names = FALSE)))
 
-#' Random rotation matrix
+#' Random orthogonal matrix
 #'
-#' Generation of a random \code{n x n} rotation matrix (random orthogonal
+#' Generation of a random \code{n x n} (random orthogonal
 #' matrix).
 #'
 #' @param n \code{numeric} of length 1 defining the dimensions of the \code{n x n} square matrix.
 #' @param type Either \code{"orthonormal"} or \code{"unitary"} defining whether a real orthonormal matrix or a complex unitary matrix should be returned.
 #' @param I.matrix If \code{TRUE}, the identity matrix is returned.
 #'
-#' @return A random rotation matrix of dimension \code{n x n}.
+#' @return A random orthogonal matrix of dimension \code{n x n}.
 #' @export
 #' @details
-#' A random rotation matrix \code{R} is generated in order that \code{t(R)} (for \code{"orthonormal"}) or \code{Conj(t(R))} (for \code{"unitary"}) equals the inverse matrix of \code{R}.
+#' A random orthogonal matrix \code{R} is generated in order that \code{t(R)} (for \code{"orthonormal"}) or \code{Conj(t(R))} (for \code{"unitary"}) equals the inverse matrix of \code{R}.
 #'
 #' This function was adapted from the pracma package (\code{\link[pracma:randortho]{pracma::randortho}}).
 #'
-#' The generated random rotation matrices are distributed according to the Haar measure over
+#' The vectors in the generated random orthogonal matrices are distributed according to the Haar measure over
 #' \code{O(n)}, where \code{O(n)} is the set of orthogonal matrices of order \code{n}.
-#' Simplified and somewhat unprofessionally formulated, this means that the random rotation
-#' matrices are distributed "uniformly" in the space of random rotation matrices of dimension \code{n x n}.
+#' Simplified and somewhat unprofessionally formulated, this means that the random orthogonal
+#' matrices are distributed "uniformly" in the space of random orthogonal matrices of dimension \code{n x n}.
 #' See also the \code{Examples} and \insertCite{Stewart1980a,mezzadri2006generate}{randRotation}.
 #'
 #'
@@ -956,7 +962,7 @@ setMethod("dimnames", "init.batch.randrot",
 #' @importFrom graphics smoothScatter
 #' @examples
 #'
-#' # The following example shows the orthogonality of the random rotation matrix:
+#' # The following example shows the orthogonality of the random orthogonal matrix:
 #' R1 <- randorth(4)
 #' zapsmall(t(R1) %*% R1)
 #'
@@ -1023,15 +1029,20 @@ randpermut <- function(n){
 #'
 #' @param initialised.obj An initialised random rotation object as returned by \code{\link[randRotation:init.randrot]{init.randrot}} and \code{\link[randRotation:init.randrot]{init.batch.randrot}}.
 #' Currently, customised correlation matrices \code{cormat} (see \code{\link[randRotation:init.randrot]{init.randrot}}) are not allowed. Sample \code{weights} are allowed.
-#' @param mapping An idempotent mapping function that takes a matrix \code{Y} with \code{features x samples} dimensions and returns a matrix of
-#' transformed data with the same dimensions. Any further arguments can be passed to \code{mapping} through the \code{mapping.args} argument.
-#' @param mapping.args List of further arguments passed to mapping function.
 #' @param R Number of resampling replicates.
+#' @param mapping An idempotent mapping function that takes a matrix \code{features x samples} dimensions as first argument and returns a matrix of
+#' transformed data with the same dimensions. Any further arguments can be passed to \code{mapping} through \code{...}.
+#' @param ... Additional arguments passed to \code{mapping}.
 #'
 #' @return A vector of estimated df for each feature.
 #' @export
 #'
-#' @details The mapping/transformation function can also be approximately idempotent. The function produces an error if
+#' @details This function estimates the degrees of freedom of an arbitrary idempotent \code{mapping} function. The degrees of freedom
+#' are thereby estimated as the rank of the Jacobian of the mapping. It is thus the rank of the local linear approximation of the mapping function.
+#' Local means that the mapping is practically linearised around the expected value of mapped rotated datasets.
+#'
+#' An estimation of df is generated for each feature.
+#' The mapping/transformation function can also be approximately idempotent. The function produces an error if
 #' a correlation matrix \code{cormat} (\code{\link[randRotation:init.randrot]{init.randrot}}) was specified when the random rotation object was initialised.
 #' \code{weights} are allowed.
 #'
@@ -1059,16 +1070,15 @@ randpermut <- function(n){
 #'   sva::ComBat(Y, batch, mod)
 #' }
 #'
-#' mapping.args <- list(batch = pdata$batch, mod = mod1)
 #'
-#' # Illustrate approximate idempotency of mapping function
-#' idempot(edata, mapping, mapping.args)
+#' # Illustrate approximate idempotence of mapping function
+#' idempot(edata, mapping = mapping, batch = pdata$batch, mod = mod1)
 #'
-#' dfs <- df.estimate(init1, mapping, mapping.args)
+#' dfs <- df.estimate(init1, mapping = mapping, batch = pdata$batch, mod = mod1)
 #' hist(dfs)
 #' summary(dfs)
 
-df.estimate <- function(initialised.obj, mapping, mapping.args = NULL, R = 100){
+df.estimate <- function(initialised.obj, R = 100, mapping,...){
 
   if((is(initialised.obj, "init.batch.randrot") &&
      any(unlist(lapply(initialised.obj$batch.obj, function(i)(!is.null(i$cormat))))))
@@ -1080,17 +1090,18 @@ df.estimate <- function(initialised.obj, mapping, mapping.args = NULL, R = 100){
 
   ### A two-pass algorithm is implemented for numerically more stable
   ### estimations of variances and covariances. In a first step, the means are
-  ### estimated. In a second step, the variances and covariances are estimated
-  ### with the means subtracted.
+  ### estimated very roughly.
+  ### In a second step, the means, variances and covariances are estimated
+  ### with the rough means subtracted. This makes it numerically more stable.
 
   y.t <- randrot(initialised.obj)
-  y.h <- do.call(mapping, c(list(Y=y.t), mapping.args))
+  y.h <- mapping(y.t,...)
 
 
   #### Step1: mean estimation
   for(i in seq_len(9)){
     y.ti <- randrot(initialised.obj)
-    y.hi <- do.call(mapping, c(list(Y=y.ti), mapping.args))
+    y.hi <- mapping(y.ti,...)
 
     y.t <- y.t + y.ti
     y.h <- y.h + y.hi
@@ -1101,7 +1112,7 @@ df.estimate <- function(initialised.obj, mapping, mapping.args = NULL, R = 100){
 
   #### Step2: Variance and covariance estimation.
   y.t <- randrot(initialised.obj)
-  y.h <- do.call(mapping, c(list(Y=y.t), mapping.args))
+  y.h <- mapping(y.t,...)
 
   y.t <- y.t - y.t.mean
   y.h <- y.h - y.h.mean
@@ -1112,7 +1123,7 @@ df.estimate <- function(initialised.obj, mapping, mapping.args = NULL, R = 100){
 
   for(i in seq_len(R-1)){
     y.ti <- randrot(initialised.obj)
-    y.hi <- do.call(mapping, c(list(Y=y.ti), mapping.args))
+    y.hi <- mapping(y.ti,...)
 
     y.ti <- y.ti - y.t.mean
     y.hi <- y.hi - y.h.mean
@@ -1133,9 +1144,9 @@ df.estimate <- function(initialised.obj, mapping, mapping.args = NULL, R = 100){
 }
 
 
-#' Idempotency of a mapping function
+#' Idempotence of a mapping function
 #'
-#' This function provides a tool for illustrating idempotency of a mapping function.
+#' This function provides a tool for illustrating idempotence (or approximate idempotence) of a mapping function.
 #'
 #' An idempotent mapping function \code{m} is a mapping function with the
 #' property \code{m(Y)} equals \code{m(m(Y))} for a numerical matrix \code{Y}.
@@ -1172,7 +1183,7 @@ df.estimate <- function(initialised.obj, mapping, mapping.args = NULL, R = 100){
 #' idempot(A, mapping)
 #'
 #' # See also example in '?df.estimate'
-idempot <- function(Y, mapping, mapping.args = NULL, iterations = 5,
+idempot <- function(Y, mapping, ..., iterations = 5,
                     quantile.plot = TRUE, quantiles = seq(0,1,0.25),
                     na.rm = FALSE){
 
@@ -1186,7 +1197,7 @@ idempot <- function(Y, mapping, mapping.args = NULL, iterations = 5,
   quans <- matrix(-1, length(quantiles), iterations)
 
   for (i in seq_len(iterations)){
-    y.h <- do.call(mapping, c(list(Y=y.t), mapping.args))
+    y.h <- mapping(y.t, ...)
     quans[,i] <- quantile(abs(y.h - y.t), probs = quantiles, na.rm = na.rm)
     y.t <- y.h
   }
@@ -1331,7 +1342,7 @@ idempot <- function(Y, mapping, mapping.args = NULL, iterations = 5,
 #'
 #'
 #' @param obj A \code{rotate.stat} object as returned by \code{\link[randRotation:rotate.stat]{rotate.stat}}.
-#' @param method Can be either \code{"none"}, \code{"fdr.q"}, \code{"fdr.qu"} or any term that can be passed as \code{method} argument to \code{\link[stats:p.adjust]{stats::p.adjust}}, see \code{Details}. If \code{method = "none"}, resampling based
+#' @param method Can be either \code{"none"} (default), \code{"fdr.q"}, \code{"fdr.qu"} or any term that can be passed as \code{method} argument to \code{\link[stats:p.adjust]{stats::p.adjust}}, see \code{Details}. If \code{method = "none"}, resampling based
 #' p-values without further adjustment are calculated.
 #' @param pooled \code{logical}. \code{TRUE} (default) if marginal distributions are exchangeable for all features so that rotated stats can be pooled, see \code{Details}.
 #' @param na.rm \code{logical}. \code{NA} values are ignored if set \code{TRUE}. \code{NA} values should be avoided and could e.g. be removed by imputation in original data or by removing features that contain \code{NA} values. Few \code{NA} values do not have a large effect, but many \code{NA} values can lead to wrong estimations of p-values and FDRs. We highly recommend avoiding \code{NA} values.
@@ -1354,19 +1365,33 @@ idempot <- function(Y, mapping, mapping.args = NULL, iterations = 5,
 #'   For all other \code{method} arguments resampling based p-values are
 #'   calculated and passed to \code{\link[stats:p.adjust]{stats::p.adjust}} for
 #'   p-value adjustment. So these methods provide resampling based p-values with
-#'   (non-resampling based) p-value adjustment. When \code{pooled = TRUE},
+#'   (non-resampling based) p-value adjustment.
+#'
+#'   When \code{pooled = TRUE},
 #'   marginal distributions of the test statistics are considered exchangeable
 #'   for all features. The resampling based p-values of each feature are then
 #'   calculated from all rotated statistics (all features, all rotations). For
 #'   these cases, if the number of features is reasonably large, usually only
 #'   few resamples (argument \code{R} in
-#'   \code{\link[randRotation:rotate.stat]{rotate.stat}}) are required. When
-#'   \code{pooled = FALSE} the resampling based p-values are calculcated for
-#'   each feature separately. This is required if one expects the resampling
+#'   \code{\link[randRotation:rotate.stat]{rotate.stat}}) are required.
+#'   We want to emphasize that in order for the marginal distributions to be
+#'   exchangeable, the statistics must be scale independent.
+#'   Scale independent statistics are e.g. t values. Using e.g. linear models
+#'   with \code{coef} as statistics is questionable if the different features
+#'   are measured on different scales. The resampled coefficients then
+#'   have different variances and \code{pooled = TRUE} is not applicable.
+#'   We thus highly recommend using \code{statistics} which are scale
+#'   independent in \code{\link[randRotation:rotate.stat]{rotate.stat}}
+#'   if possible.
+#'
+#'   When \code{pooled = FALSE} the resampling based p-values are calculcated
+#'   for each feature separately. This is required if one expects the resampling
 #'   based statistics to be distributed differently for individual features. For
 #'   most common applications this should not be the case and the marginal
 #'   distribution are exchangeable for all features, hence \code{pooled = TRUE}
-#'   by default. \code{method = "fdr.q"} and \code{method = "fdr.qu"} were
+#'   by default.
+#'
+#'   \code{method = "fdr.q"} and \code{method = "fdr.qu"} were
 #'   adapted from package \code{fdrame}
 #'   \insertCite{Fdrame2019,Reiner2003}{randRotation}.
 #'

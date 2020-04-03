@@ -19,7 +19,7 @@ test_that("Test execution of rotate.stat (including parallel computation mode), 
     capture.output(suppressMessages(Y.tmp <- sva::ComBat(Y, batch = batch, mod)))
 
     fit1 <- lm.fit(mod, t(Y.tmp))
-    t(abs(coef(fit1)[coef,, drop = FALSE]))
+    t(abs(coef(fit1)[coef,]))
   }
 
   res1 <- rotate.stat(initialised.obj = init1,
@@ -35,7 +35,7 @@ test_that("Test execution of rotate.stat (including parallel computation mode), 
 
 
   ### Test for exact dimensions and for parallel processing
-  res1 <- rotate.stat(initialised.obj = init1, R = 100, statistic = statistic,
+  res1 <- rotate.stat(initialised.obj = init1, R = 10, statistic = statistic,
                       batch = pdata$batch, mod = mod1, coef = 1:2,
                       parallel = TRUE)
   expect_equal(dim(p.fdr(res1)), c(features,2))
@@ -47,7 +47,7 @@ test_that("Test execution of rotate.stat (including parallel computation mode), 
     capture.output(suppressMessages(Y.tmp <- sva::ComBat(Y, batch = batch, mod)))
 
     fit1 <- lm.fit(mod, t(Y.tmp))
-    t(abs(coef(fit1)[coef,1, drop = FALSE]))
+    t(abs(coef(fit1)[coef,1]))
   }
 
   res1 <- rotate.stat(initialised.obj = init1, R = 10, statistic = statistic,
@@ -68,10 +68,10 @@ test_that("Test execution of rotate.stat (including parallel computation mode), 
     capture.output(suppressMessages(Y.tmp <- sva::ComBat(Y, batch = batch, mod)))
 
     fit1 <- lm.fit(mod, t(Y.tmp))
-    t(abs(coef(fit1)[coef,1, drop = FALSE]))
+    t(abs(coef(fit1)[coef,1]))
   }
 
-  res1 <- rotate.stat(initialised.obj = init1, R = 10, statistic = statistic,
+  res1 <- rotate.stat(initialised.obj = init1, R = 1, statistic = statistic,
                       batch = pdata$batch, mod = mod1, coef = 2,
                       parallel = FALSE)
 

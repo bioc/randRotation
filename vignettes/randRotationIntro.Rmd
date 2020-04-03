@@ -3,7 +3,7 @@ title: "Random Rotation Package Introduction"
 author: "Peter Hettegger"
 date: "`r Sys.Date()`"
 output:
-  BiocStyle::pdf_document:
+  BiocStyle::html_document:
     toc: TRUE
     fig_width: 4.5
     fig_height: 3.5
@@ -12,26 +12,29 @@ vignette: >
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 bibliography: ../inst/library.bib
+link-citations: true
 ---
-
 
 ```{r, include = FALSE}
 knitr::opts_chunk$set(
   collapse = TRUE,
-  comment = "#>",
-  tidy=TRUE
+  comment = "#>"
 )
 ```
 
 
+
 # Introduction
 
-`randRotation` is an R package intended for generation of randomly rotated data to resample null distributions of linear model based dependent test statistics. See also .............. (Yekutieli Benjamini Paper hier zitieren und später auch das eigene Paper). Possible applications for resampling by roation, that are outlined in this document, are: (i) linear models in combination with practically arbitrary (linear or non-linear) batch effect correction methods --> Section ...; (ii) calculation of resampling based test statistics for calculating resampling based p-values and false discovery rates (FDRs) --> Section ...; (iii) estimation of the degrees of freedoms (df) used by idempotent mapping functions  --> Section ... and (iv) generation of resampled datasets for evaluation of data analysis pipelines --> Section .... Generally, the rotation approach provides a methodology for generating resampled data in the context of linear models and thus potentially has further conceivable areas of applications in high-dimensional data analysis with dependent variables. Nevertheless, we focus this document on the outlined range of issues in order to provide an intuitive and problem-centered introduction.
+`randRotation` is an R package intended for generation of randomly rotated data to resample null distributions of linear model based dependent test statistics. See also [@Yekutieli1999] for resampling dependent test statistics. The main application is to resample test statistics on linear model coefficients following arbitrary batch effect correction methods, see also section [Quick start](#quick-start). The random rotation methodology is thereby applicable for linear models in combination with normally distributed data. Note that the resampling procedure is actually based on random orthogonal matrices, which is a broader class than random rotation matrices. Nevertheless, we adhere to the naming convention of [@Langsrud2005] designating this approach as random rotation methodology.
+<!-- Possible applications for resampling by roation, that are outlined in this document, are: (i) linear models in combination with practically arbitrary (linear or non-linear) batch effect correction methods, section \@ref(BE-correction); (ii) calculation of resampling based test statistics for calculating resampling based p-values and false discovery rates (FDRs), section ...; (iii) estimation of the degrees of freedoms (df) used by idempotent mapping functions, section ... and (iv) generation of resampled datasets for evaluation of data analysis pipelines, section ....  -->
+
+Generally, the rotation approach provides a methodology for generating resampled data in the context of linear models and thus potentially has further conceivable areas of applications in high-dimensional data analysis with dependent variables. Nevertheless, we focus this document on the outlined range of issues in order to provide an intuitive and problem-centered introduction.
 
 
 # Sample dataset {#dataset}
 
-For subsequent analyses we create a hypothetical sample dataset of 3 batches, each containing 5 Control and 5 Cancer samples with 1000 features (genes).
+For subsequent analyses we create a hypothetical dataset with 3 batches, each containing 5 Control and 5 Cancer samples with 1000 features (genes). Note that the created dataset is pure noise and no artificial covariate effects are introduced. We thus expect uniformly distributed p-values for linear model coefficients.
 
 ```{r message=FALSE}
 library(randRotation)
@@ -49,94 +52,170 @@ xtabs(data = pdata)
 ```
 
 
-# Quick start - linear models with batch effect correction
+# Quick start - linear models with batch effect correction {#quick-start}
+
+A main application of the package is to resample null distributions of parameter estimates for linear models following batch effect correction. We first create our model matrix:
 
 ```{r}
-mod1 <- model.matrix(~phenotype, pdata)
+mod1 <- model.matrix(~1+phenotype, pdata)
 head(mod1)
 ```
 
+We then initialise the random rotation object with `init.batch.randrot` and select the `phenotype` coefficient
+as the null hypothesis coefficient:
 
 ```{r}
 rr <- init.batch.randrot(Y = edata, X = mod1, coef.h = 2, batch = pdata$batch)
 ```
 
+Now we define the data analysis pipeline that should be run on the original dataset and on the rotated dataset.
+Here we include as first step (I) our batch effect correction routine and as second step (II) we obtain
+the coefficient of interest from the linear model fit.
 
 ```{r}
 statistic <- function(Y, batch, mod){
+  # (I) Batch effect correction with "Combat" from the "sva" package
   Y <- sva::ComBat(dat = Y, batch = batch, mod = mod)
+  
+  # (II) Linear model fit
   fit1 <- lm.fit(x = mod, y = t(Y))
-  t(coef(fit1))[,2]
+  abs(t(coef(fit1))[,2])
 }
 ```
 
+Note that larger values of the `statistic` function are considered as more significant
+in the subsequently used `p.fdr` function. We thus take the absolute values of the coefficients in order to calculate two-sided (two-tailed) p-values with `p.fdr`. We emphasize that we highly recommend using scale independent statistics
+as e.g. t-values instead of parameter estimates (as with `coef`), see also `?randRotation::p.fdr`. Nevertheless,
+we use `coef` here in order to avoid bulky function definitions.
+
+The `rotate.stat` function calculates `statistic` on the original (non-rotated) dataset and on
+10 random rotations. `batch` and `mod` are provided as additional parameters to `statistic`.
 
 ```{r message=FALSE, results='hide'}
-rs1 <- rotate.stat(initialised.obj = rr, R = 1000, statistic = statistic,
-                    batch = pdata$batch, mod = mod1)
+rs1 <- rotate.stat(initialised.obj = rr, R = 10, statistic = statistic,
+                   batch = pdata$batch, mod = mod1)
 ```
 
 ```{r}
 rs1
 ```
 
+Resampling based p-values are obtained with `p.fdr`. As we use "pooling"
+of the rotated statistics in `p.fdr`, 10 random rotations are sufficient.
 
 ```{r}
 p.vals <- p.fdr(rs1)
-hist(p.vals)
+hist(p.vals, col = "lightgreen");abline(h = 100, col = "blue", lty = 2)
 qqunif(p.vals)
 ```
 
+We see that, as expected, our p-values are approximately uniformly distributed.
 
 
-# Rotation method - coef.d stay the same under rotation
+**Additional info:** Below, the analysis pipeline is performed without rotation.
+Following batch effect correction with `ComBat` (`r Biocpkg("sva")` package),
+we obtain p-values from linear fit coefficients as follows:
+
 ```{r}
-mod0 <- model.matrix(~1, pdata)
+edata.combat <- sva::ComBat(dat = edata, batch = pdata$batch, mod = mod1)
+fit1 <- lm.fit(x = mod1, y = t(edata.combat))
 
-statistic <- function(Y, mod){
-  coef(lm.fit(x = mod, y = t(Y)))
-}
+# t-statistics
+var.beta <- diag(solve(t(mod1)%*%mod1))
+s2 <- colSums(resid(fit1)^2) / df.residual(fit1)
+t1 <- t(coef(fit1) / sqrt(var.beta)) / sqrt(s2)
 
-s1 <- statistic(edata, mod0)
-s2 <- statistic(randrot(rr), mod0)
+# P-values from t-statistics
+p.vals.nonrot <- 2*pt(abs(t1), df.residual(fit1), lower.tail = FALSE)
+p.vals.nonrot <- p.vals.nonrot[,2]
 
-all.equal(s1, s2)
+hist(p.vals.nonrot, col = "lightgreen");abline(h = 100, col = "blue", lty = 2)
+qqunif(p.vals.nonrot)
+plot(p.vals, p.vals.nonrot, log = "xy");abline(0,1, col = "blue", lty = 1)
 ```
 
+We see that the p-values are non-uniformly distributed. See also section \@ref(skewed-null).
 
-# Batch effect correction with subsequent linear model analysis 
+# Basic principle of random rotation methods {#basic-principle}
 
-In the following we outline the use of the `randRotation` package for linear model analysis following batch effect correction as a prototype application in current biomedical research. We highlight the problems faced when batch effect correction is separated from data analysis with linear models. The separation of batch effect correction and subsequent analysis is unavoidable for certain applications. In the following we use `ComBat` (`r Biocpkg("sva")` package) for batch effect correction with subsequent linear model analysis with the `r Biocpkg("limma")` package. For further information about these packages, see [@Ritchie2015;@Leek2019]. We use `limma` and `ComBat` as model functions for demonstration, as these are frequently used in biomedical research. Nevertheless, we want to emphasize that neither the described issues are specific to these functions, nor do we want to somehow defame these highly useful packages.
+In the random rotation methodology, the observed data vectors (for each feature) are
+rotated in way that the *determined* coefficients ($\boldsymbol{B_D}$ in @Langsrud2005)
+stay constant when resampling under the null hypothesis $H0: \boldsymbol{B_H = 0}$, see [@Langsrud2005].
 
-## Skewed null distribution of p values
+The following example shows that the intercept coefficient of the *null model* does not change when rotation is performed under the null hypothesis:
 
-Separating (an arbitrary) batch effect correction method from linear model analysis could practically lead to non-uniform (skewed) null distributions of p-values for testing linear model coefficients. The intuitive reason for this skew is that the batch effect correction method combines information of all samples to remove the batch effects. After removing the batch effects, the samples are thus no longer independent. For further information please refer to section [df estimation](#dfest) and to the [references](#references). The following example demonstrates an approach for sample correlation matrices with block design, For other designs please refer to section [Correlation matrices with non-block design](#nonblock).
+```{r}
+# Specification of the full model
+mod1 <- model.matrix(~1+phenotype, pdata)
 
-We first load the `r Biocpkg("limma")` and `r Biocpkg("sva")` packages and create the model matrix with the intercept term and the phenotype term. 
+# We select "phenotype" as the coefficient associated with H0
+# All other coefficients are considered as "determined" coefficients
+rr <- init.randrot(Y = edata, X = mod1, coef.h = 2)
+
+coefs <- function(Y, mod){
+  t(coef(lm.fit(x = mod, y = t(Y))))
+}
+
+# Specification of the H0 model
+mod0 <- model.matrix(~1, pdata)
+
+coef01 <- coefs(edata, mod0)
+coef02 <- coefs(randrot(rr), mod0)
+
+head(cbind(coef01, coef02))
+
+all.equal(coef01, coef02)
+```
+
+However, the coefficients of the *full model* do change when rotation is performed under the null hypothesis:
+
+```{r}
+coef11 <- coefs(edata, mod1)
+coef12 <- coefs(randrot(rr), mod1)
+
+head(cbind(coef11, coef12))
+```
+
+This is in principle how resampling based tests are constructed.
+
+# Batch effect correction with subsequent linear model analysis {#BE-correction}
+
+In the following we outline the use of the `randRotation` package for linear model analysis following batch effect correction as a prototype application in current biomedical research. We highlight the problems faced when batch effect correction is separated from data analysis with linear models. Although data analysis procedures with combined batch effect correction and model inference should be preferred, the separation of batch effect correction from subsequent analysis is unavoidable for certain applications. In the following we use `ComBat` (`r Biocpkg("sva")` package) as a model of a "black box" batch effect correction procedure. Subsequent linear model analysis is done with the `r Biocpkg("limma")` package. For further information about these packages, see [@Ritchie2015;@Leek2019]. We use `limma` and `ComBat` as model functions for demonstration, as these are frequently used in biomedical research. We want to emphasize that neither the described issues are specific to these functions, nor do we want to somehow defame these highly useful packages.
+
+## Skewed null distribution of p values {#skewed-null}
+
+Separating a (possibly non-linear) batch effect correction method from linear model analysis could practically lead to non-uniform (skewed) null distributions of p-values for testing linear model coefficients. The intuitive reason for this skew is that the batch effect correction method combines information of all samples to remove the batch effects. After removing the batch effects, the samples are thus no longer independent. For further information please refer to section [df estimation](#dfest) and to the [references](#references).
+
+The following example demonstrates the influence of the batch effect correction on the distribution of p-values. We first load the `r Biocpkg("limma")` package and create the model matrix with the intercept term and the phenotype term.
 
 ```{r message=FALSE, results='hold'}
 library(limma)
-library(sva)
 
 mod1 = model.matrix(~phenotype, pdata)
+```
 
+Remember that our [sample dataset](#dataset) is pure noise. Thus, without batch effect correction,
+fitting a linear model with `limma` and testing the phenotype coefficient results in uniformly distributed p-values:
+
+```{r}
 # Linear model fit
 fit0 <- lmFit(edata, mod1)
 fit0 <- eBayes(fit0)
 
-# P value for phenotype coefficient
+# P values for phenotype coefficient
 p0 <- topTable(fit0, coef = 2, number = Inf, adjust.method = "none", sort.by = "none")$P.Value
-hist(p0, freq = FALSE, col = rgb(0,1,0,0.3), breaks = seq(0,1,0.1)); abline(1,0, col = "blue", lty = 2)
+hist(p0, freq = FALSE, col = "lightgreen", breaks = seq(0,1,0.1)); abline(1,0, col = "blue", lty = 2)
 qqunif(p0)
 ```
 
 
-We now perform batch effect correction using `ComBat`:
+We now perform batch effect correction using `ComBat` (`r Biocpkg("sva")` package):
 ```{r}
+library(sva)
 edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1)
 ```
 
-The batch effect corrected data is fit with `limma` and subsequently the phenotype covariate is tested for significance. The resulting p-values are shown in the following histogram.
+Performing the model fit and testing the phenotype effect on this modified dataset results in a skewed p-value distribution:
 
 ```{r}
 # Linear model fit
@@ -145,363 +224,492 @@ fit1 <- eBayes(fit1)
 
 # P value for phenotype coefficient
 p.combat <- topTable(fit1, coef = 2, number = Inf, adjust.method = "none", sort.by = "none")$P.Value
-hist(p.combat, freq = FALSE, col = rgb(0,1,0,0.3), breaks = seq(0,1,0.1)); abline(1,0, col = "blue", lty = 2)
+hist(p.combat, freq = FALSE, col = "lightgreen", breaks = seq(0,1,0.1)); abline(1,0, col = "blue", lty = 2)
 qqunif(p.combat)
 ```
 
-Remember that the sample dataset was generated from a random normal distribution. The histogram and Q-Q plot clearly show that the null-distribution of p-values is skewed when linear model analysis is performed following batch effect correction in a data analysis pipeline of this type. This problem is known and described e.g. in [@Nygaard2015]. Note that the null-distribution is skewed although the experimental design is balanced.
+The histogram and Q-Q plot clearly show that the null-distribution of p-values is skewed when linear model analysis is performed following batch effect correction in a data analysis pipeline of this type. This problem is known and described e.g. in [@Nygaard2015]. Note that the null-distribution is skewed although the experimental design is balanced.
 
 
-## Unskewed p-values with resampling
+## Unskewed p-values by random rotation
 
+In the following, we take the data analysis pipeline of the previous section and incorporate it into the
+random rotation environment. The `init.batch.randrot` function initialises the random rotation
+object with the design matrix of the linear model. We thereby specify the coefficients associated with
+the null hypothesis $H0$ (see also \@ref(basic-principle)) with `coef.h`. 
+Additionally, the batch covariate is provided.
+
+Note that the implementation with `init.batch.randrot` in principle implicitly assumes a block design of the correlation matrix and restricted roation matrix, see also \@ref{nonblock}.
 
 ```{r}
-#w = matrix(1+runif(length(edata))-0.5, nrow(edata), ncol(edata))
 init1 <- init.batch.randrot(edata, mod1, coef.h = 2, batch = pdata$batch)
+```
 
+We now pack the data analysis pipeline of above into our statistic function, which is
+called for the original (non-rotate) data and for all data rotations:
+
+```{r}
 statistic <- function(Y, batch, mod, coef){
   Y.tmp <- sva::ComBat(dat = Y, batch = batch, mod = mod)
 
   fit1 <- limma::lmFit(Y.tmp, mod)
   fit1 <- limma::eBayes(fit1)
-  abs(fit1$t[,coef,drop = FALSE])
+  # The "abs" is needed for "p.fdr" to calculate 2-tailed statistics
+  abs(fit1$t[,coef])
 }
-
-stat.args <- list(batch = pdata$batch, mod = mod1, coef = 2)
 ```
+
+Data rotation and calling the `statistic` function is performed with `rotate.stat`.
 
 ```{r message=FALSE, results='hide'}
-
-res1 <- rotate.stat(initialised.obj = init1, R = 1000, statistic = statistic, 
-                    batch = pdata$batch, mod = mod1, coef = 2,
-                    parallel = TRUE)
-
+res1 <- rotate.stat(initialised.obj = init1, R = 10, statistic = statistic,
+                    batch = pdata$batch, mod = mod1, coef = 2)
 ```
 
-```{r}
+As we use pooling of rotated statistics, `R = 10` resamples should be sufficient (see also \@ref(number-resamples)).
+We now calculate rotation based p-values with `p.fdr`:
 
+```{r}
 p.rot <- p.fdr(res1)
 head(p.rot)
 
-hist(p.rot, freq = FALSE, col = rgb(0,1,0,0.3), breaks = seq(0,1,0.1)); abline(1,0, col = "blue", lty = 2)
+hist(p.rot, freq = FALSE, col = "lightgreen", breaks = seq(0,1,0.1)); abline(1,0, col = "blue", lty = 2)
 qqunif(p.rot)
+```
 
+We see that our rotated p-values are roughly uniformly distributed.
+
+
+For illustration of the skewness of non-rotated p-values, we compare the non-rotated p-values `p.combat` (batch corrected),
+the rotated p-values `p.rot` (batch corrected) and the p-values from linear model analysis without batch correction `p0`.
+
+```{r}
 plot(density(log(p.rot/p0)), col = "salmon", "Log p ratios", panel.first = abline(v=0, col = "grey"),
      xlim = range(log(c(p.rot/p0, p.combat/p0))))
 lines(density(log(p.combat/p0)), col = "blue")
 legend("topleft", legend = c("log( p.combat / p0 )", "log( p.rot / p0 )"), lty = 1, col = c("blue", "salmon"))
+```
 
+We see the skew of the non-rotated p-values towards lower values. This is also seen in another
+illustration below:
+
+```{r}
 plot(p0, p.combat, log = "xy", pch = 19, col = "lightblue", ylab = "")
 points(p0, p.rot, pch = 19, col = "salmon")
 abline(0,1, lwd = 1.5, col = "black")
 legend("topleft", legend = c("p.combat", "p.rot"), pch = 19, col = c("lightblue", "salmon"))
-
 ```
 
-
-Here you see that the combat p-values are downward biased against the "true" null p-values.
-
+The non-rotated p-values are on average lower than the rotated p-values:
 
 ```{r}
 plot(density(log(p.combat/p.rot)), col = "blue", main = "log( p.combat / p.rot )", panel.first = abline(v=0, col = "grey"))
 ```
-In this plot you see that the combat p-values are biased against the rotation based p values.
 
 
+# How many resamples ? {#number-resamples}
+
+In principle the number of resampled values of our statistic of interest should be at least as high as the number of features in order to reach unskewed null distributions (for n features --> with a p-value of 1/n you still expect 1 significant feature). If the marginal distributions of the statistics are exchangeable (see also `?randRotation::p.fdr`) pooling of the rotated statistics can be used.
+By pooling rotated statistics, the number of random rotations can be substantially reduced.
 
 
+<!-- # df estimation {#dfest} -->
 
-# How many resamples ?
-
-In principle the number of resamples (`R`) should be at least as high as the number of features in order to reach unskewed null distributions (for n features --> with a p-value of 1/n you still expect 1 significant feature).
-
-
-# df estimation {#dfest}
-
-ACHTUNG: Warauf muss man bei df.estimate achten (z.B. wenn man die Combat df's schätzt ) ? Welche coef's muss ich wählen ?
+<!-- ACHTUNG: Warauf muss man bei df.estimate achten (z.B. wenn man die Combat df's schätzt ) ? Welche coef's muss ich wählen ? -->
 
 
-```{r message=FALSE, warning=FALSE, results='hide'}
+<!-- ```{r message=FALSE, warning=FALSE, results='hide'} -->
 
-mapping = function(Y, batch, mod) {
-  sva::ComBat(Y, batch, mod)
-}
+<!-- mapping = function(Y, batch, mod) { -->
+<!--   sva::ComBat(Y, batch, mod) -->
+<!-- } -->
 
-mapping.args = list(batch = pdata$batch, mod = mod1)
+<!-- mapping.args = list(batch = pdata$batch, mod = mod1) -->
 
-idempot(edata, mapping, mapping.args, quantiles = seq(0,1,0.25))
-idempot(edata, function(Y)floor(Y))
-idempot(edata, function(Y)Y*1.5)
+<!-- idempot(edata, mapping, mapping.args, quantiles = seq(0,1,0.25)) -->
+<!-- idempot(edata, function(Y)floor(Y)) -->
+<!-- idempot(edata, function(Y)Y*1.5) -->
 
-dfs = df.estimate(init1, mapping, mapping.args)
-hist(dfs)
-summary(dfs)
-```
+<!-- dfs = df.estimate(init1, mapping, mapping.args) -->
+<!-- hist(dfs) -->
+<!-- summary(dfs) -->
+<!-- ``` -->
 
 
-```{r,eval=FALSE,purl=FALSE}
+<!-- ```{r,eval=FALSE,purl=FALSE} -->
 
-library(limma)
-library(sva)
+<!-- library(limma) -->
+<!-- library(sva) -->
 
-mod1 = model.matrix(~phenotype, pdata)
-edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1)
-```
-```{r, include=FALSE}
-library(limma)
-library(sva)
+<!-- mod1 = model.matrix(~phenotype, pdata) -->
+<!-- edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1) -->
+<!-- ``` -->
+<!-- ```{r, include=FALSE} -->
+<!-- library(limma) -->
+<!-- library(sva) -->
 
-mod1 = model.matrix(~phenotype, pdata)
-edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1)
+<!-- mod1 = model.matrix(~phenotype, pdata) -->
+<!-- edata.combat = ComBat(edata, batch = pdata$batch, mod = mod1) -->
 
-```
+<!-- ``` -->
 
 
 # Correlation matrices with non-block design {#nonblock}
 
-Function `init.batch.randrot` implicitly assumes a block design of the sample correlation matrix. This means that correlations between samples are allowed within batches, but are zero between batches. Simply put, biological replicates or technical replicates (or any other cause of non-zero sample correlation) are contained within single batches and are not distributed to different batches. In this case, each batch has his own sample correlation matrix and correlation coefficients between batches are assumed to be zero. This assumption seems restrictive at first view, but is computationally efficient and hence implemented in `init.batch.randrot`. However, a general correlation matrix with non-block design (non-zero sample correlations between batches) can be initialised with `init.randrot`. Thus, `init.batch.randrot` simply provides a comfortable wrapper for sample correlation matrices with block design.
+Function `init.batch.randrot` implicitly assumes a block design of the sample correlation matrix and the restricted rotation matrix (see also `?randRotation::init.batch.randrot`). This means that correlations between samples are allowed within batches, but are zero between batches. Simply put, biological replicates or technical replicates (or any other cause of non-zero sample correlation) are contained within single batches and are not distributed to different batches. In this case, each batch has his own sample correlation matrix and correlation coefficients between batches are assumed to be zero. This assumption seems restrictive at first view, but is computationally efficient, as the random rotation can be performed for each batch independently. This is how `init.batch.randrot` is implemented. However, a general correlation matrix with non-block design (non-zero sample correlations between batches) can be initialised with `init.randrot`. Thus, `init.batch.randrot` simply provides a comfortable wrapper for sample correlation matrices with block design or for rotation of data with batch structure. For a correlation matrix of $I_{n \times n}$, `init.randrot` and `init.batch.randrot` are practically equivalent.
 
-# Plots with different FDRs (BH, BY, fdr.q, ...)
+<!-- # Plots with different FDRs (BH, BY, fdr.q, ...) -->
 
 
 
-# Linear mixed models with batch effect correction
+<!-- # Linear mixed models with batch effect correction -->
 
-Eventuell design matrix (insbesondere Z matrix) mit lmer erzeugen !
+<!-- Eventuell design matrix (insbesondere Z matrix) mit lmer erzeugen ! -->
 
-Be very careful with model parametrisation (especially when doing mixed models) ! The best is to test the random rotation by fitting the null models
-on the original and rotated data and compare the parameter estimates.
+<!-- Be very careful with model parametrisation (especially when doing mixed models) ! The best is to test the random rotation by fitting the null models -->
+<!-- on the original and rotated data and compare the parameter estimates. -->
 
 
-We now assume to have a dataset of repeated measures. We assume to have taken
-multiple biopsies of 3 individuals. From each individual we have taken 5
-biopsies of healthy control tissue and 5 biopsies of cancer tissue. This is
-a possible application for mixed models with the covariate "individual" as
-random effect. Although some might cast doubt on examinating covariates with
-only 3 levels as random effects, it should be acceptable for demonstration
-purposes in this example. We add a small artificial "individual effect".
+<!-- We now assume to have a dataset of repeated measures. We assume to have taken -->
+<!-- multiple biopsies of 3 individuals. From each individual we have taken 5 -->
+<!-- biopsies of healthy control tissue and 5 biopsies of cancer tissue. This is -->
+<!-- a possible application for mixed models with the covariate "individual" as -->
+<!-- random effect. Although some might cast doubt on examinating covariates with -->
+<!-- only 3 levels as random effects, it should be acceptable for demonstration -->
+<!-- purposes in this example. We add a small artificial "individual effect". -->
 
-```{r}
-colnames(pdata)[1] <- "individual"
-xtabs(data = pdata)
+<!-- Note that if we use lmer for generating the design matrix, we get a design matrix -->
+<!-- which does not have full rank. For the sake of usability, `init.randrot` and `init.batch.randrot` -->
+<!-- handle these cases adequately. However, we recommend avoiding rank deficient design -->
+<!-- matrices where possible. -->
 
-#edata <- t(t(edata) + (as.numeric(pdata$individual) - 2))
-```
+<!-- ```{r} -->
+<!-- colnames(pdata)[1] <- "individual" -->
+<!-- xtabs(data = pdata) -->
 
-```{r}
-library(lme4)
-library(nlme)
+<!-- #edata[1:10,] <- t(t(edata[1:10,]) + (as.numeric(pdata$individual) - 2)) -->
+<!-- ``` -->
 
-df1 <- data.frame(pdata, d1 = edata[1,])
-df1 <- df1[-(1:5),]
+<!-- Show the Null distribution of testing random effects with (1) likelihood ratio test and -->
+<!-- (2) rotation test. -->
 
-FUN1 <- function(X, pdata){
-  pdata$X <- X
-  gls1 <- gls(X ~ 1 + phenotype, pdata, correlation = corCompSymm(form = ~ 1|individual))
-  gls0 <- gls(X ~ 1 + phenotype, pdata)
-  anova(gls0, gls1)$`p-value`[2]
-}
 
-# for(i in 1:10){
-#   edata <- matrix(rnorm(features * nrow(pdata)), features)
-# rownames(edata) <- paste("feature", 1:nrow(edata))
-# 
-# ps <- apply(edata, 1, FUN1, pdata = pdata)
-# 
-# hist(ps)
-# }
+<!-- ```{r} -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
+<!-- library(boot) -->
 
+<!-- df1 <- data.frame(pdata, d1 = edata[1,]) -->
 
-##### fixed effect als coef.h
+<!-- ##### random effect als coef.h -->
 
-me0 <- lmer(d1 ~ 1 + (1|individual), data = df1)
-me1 <- lmer(d1 ~ 1 + phenotype + (1|individual), data = df1)
+<!-- p.me <- function(., df1){ -->
+<!--   df1$d1 <- . -->
+<!--   m0 <- gls(d1 ~ 1, df1, method = "ML") -->
+<!--   m1 <- gls(d1 ~ 1, df1, method = "ML", correlation = corCompSymm(form = ~1|individual)) -->
+<!--   anova(m0, m1)$`p-value`[2] -->
+<!-- } -->
 
-mod1 <- as.matrix(cbind(getME(me1, "X"), getME(me1, "Z")))
-head(mod1)
-init2 <- init.randrot(Y = t(df1$d1), X = mod1, coef.h = 2)
-dim(init2$Xhe.Y.w)
+<!-- ps <- apply(edata, 1, p.me, df1) -->
 
-mod3 <- as.matrix(cbind(getME(me1, "X"), getME(me1, "Z")))[,-3]
-#mod3 <- model.matrix(~1 + phenotype + individual, df1)
-head(mod3)
-init3 <- init.randrot(Y = t(df1$d1), X = mod3, coef.h = 2)
-dim(init3$Xhe.Y.w)
+<!-- hist(ps) -->
 
-df2 <- df1
-df2$d1 <- randrot(init2)[1,]
 
-df3 <- df1
-df3$d1 <- randrot(init3)[1,]
+<!-- me1 <- lmer(d1 ~ 1 + (1|individual), data = df1, REML = FALSE) -->
+<!-- mySumm <- function(.) sigma(.) *getME(., "theta") -->
 
-me0
-lmer(d1 ~ 1 + (1|individual), data = df2)
-lmer(d1 ~ 1 + (1|individual), data = df3)
+<!-- boot1 <- bootMer(me1, mySumm, 1000) -->
+<!-- mean(boot1$t >= boot1$t0) -->
+<!-- ps[1] -->
 
-me1
-lmer(d1 ~ 1 + phenotype + (1|individual), data = df2)
-lmer(d1 ~ 1 + phenotype + (1|individual), data = df3) ### das müsste das richtige sein
 
+<!-- mod1 <- as.matrix(cbind(getME(me1, "X"), getME(me1, "Z"))) -->
+<!-- head(mod1) -->
+<!-- init1 <- init.randrot(Y = edata, X = mod1, coef.h = 2:4) -->
 
-############ Random effect als coef.h
+<!-- ### test if the rotation is done correctly -->
+<!-- df2 <- df1 -->
+<!-- df2$d1 <- randrot(init1)[1,] -->
+<!-- gls(d1 ~ 1, df1, method = "ML") -->
+<!-- gls(d1 ~ 1, df2, method = "ML") -->
 
-me0 <- gls(d1 ~ 1 + phenotype, data = df1)
-me1 <- lmer(d1 ~ 1 + phenotype + (1|individual), data = df1)
+<!-- gls(d1 ~ 1, df1, method = "ML", correlation = corCompSymm(form = ~1|individual)) -->
+<!-- gls(d1 ~ 1, df2, method = "ML", correlation = corCompSymm(form = ~1|individual)) -->
 
-mod1 <- as.matrix(cbind(getME(me1, "X"), getME(me1, "Z")))
-head(mod1)
-init2 <- init.randrot(Y = t(df1$d1), X = mod1, coef.h = 3:5)
-dim(init2$Xhe.Y.w)
+<!-- statistic <- function(.,df1){ -->
+<!--   apply(., 1, function(i){ -->
+<!--     df1$d1 <- i -->
+<!--     me1 <- nlme::gls(d1 ~ 1, df1, method = "ML", correlation = nlme::corCompSymm(form = ~1|individual)) -->
+<!--     me0 <- nlme::gls(d1 ~ 1, df1, method = "ML") -->
+<!--     logLik(me1) - logLik(me0) -->
+<!--     #abs(c(rho = coef(me$modelStruct$corStruct, FALSE))) -->
+<!--     #abs(nlme::getVarCov(me)[2]) -->
 
-df2 <- df1
-df2$d1 <- randrot(init2)[1,]
+<!--   }) -->
 
-me0
-gls(d1 ~ 1 + phenotype, data = df1)
-gls(d1 ~ 1 + phenotype, data = df2)
+<!-- } -->
+<!-- s0 <- statistic(edata, df1) -->
+<!-- register(SnowParam(progressbar = TRUE)) -->
+<!-- rs1 <- rotate.stat(init1, 5, statistic, df1, parallel = TRUE) -->
 
-me1
-gls(d1 ~ 1 + phenotype, data = df1, corCompSymm(form = ~ 1|individual))
-gls(d1 ~ 1 + phenotype, data = df2, corCompSymm(form = ~ 1|individual))
+<!-- head(p.fdr(rs1)) -->
+<!-- hist(p.fdr(rs1, pooled = TRUE)) -->
+<!-- p.fdr(rs1, pooled = FALSE)[1:5] -->
 
+<!-- hist(rs1$s0, freq = FALSE, col = "lightgreen") -->
 
+<!-- hist(ps) -->
 
+<!-- plot(p.fdr(rs1, pooled = TRUE), ps, log = "xy") -->
+<!-- abline(0,1) -->
 
 
+<!-- feats <- which(p.fdr(rs1, pooled = FALSE) < 0.1 & ps > 0.2) -->
+<!-- feats2 <- which(p.fdr(rs1, pooled = FALSE) > 0.1 & ps < 0.1) -->
 
+<!-- i <- feats2[1] -->
 
-dec1 <- X.decomp(mod1, coef.d = c(1,3:5))
-dim(dec1$Xd)
-dec1$rank
-qr(mod1)$rank
-qr.Q(qr(mod1))
+<!-- ps[i] -->
+<!-- p.fdr(rs1, pooled = FALSE)[i] -->
 
-dec3 <- X.decomp(mod3, coef.d = c(1,3:4))
-dim(dec3$Xd)
-dec3$rank
-qr(mod3)$rank
+<!-- df2 <- df1 -->
+<!-- df2$d1 <- edata[i,] -->
+<!-- (gl1 <- gls(d1 ~ 1, df2, method = "ML", correlation = corCompSymm(form = ~1|individual))) -->
+<!-- (gl0 <- gls(d1 ~ 1, df2, method = "ML")) -->
 
+<!-- plot(fitted(gl1)) -->
+<!-- lmer(d1 ~ 1 + (1|individual), data = df2, REML = FALSE) -->
+<!-- anova(gl0, gl1) -->
+<!-- coef(gl1$modelStruct$corStruct, FALSE) -->
+<!-- rs1$s0[i,] -->
+<!-- hist(rs1$stats[[1]][i,], freq = FALSE) -->
+<!-- hist(rs1$stats[[1]], freq = FALSE, add = TRUE, col = "lightgreen") -->
+<!-- p.fdr(rs1)[i,] -->
+<!-- ps[i] -->
+<!-- hist(ps) -->
+<!-- hist(p.fdr(rs1, pooled = TRUE)) -->
 
-qr1 <- qr(mod1)
-qr(qr.Q(qr1))$rank
-zapsmall(qr.Q(qr1))
-mod1
+<!-- ps[1:10] -->
+<!-- p.fdr(rs1)[1:10,] -->
+<!-- plot(p.fdr(rs1, pooled = TRUE), ps, col = rep(c("red", "black"), c(10,990)), log = "xy") -->
+<!-- qqunif(p.fdr(rs1)[-(1:10)]) -->
+<!-- ``` -->
 
 
 
 
-gls1 <- gls(d1 ~ 1 + phenotype, df1, correlation = corCompSymm(form = ~ 1|individual))
-gls0 <- gls(d1 ~ 1 + phenotype, df1)
-gls1
+<!-- ```{r} -->
+<!-- library(lme4) -->
+<!-- library(nlme) -->
 
-anova(gls0, gls1)
+<!-- df1 <- data.frame(pdata, d1 = edata[1,]) -->
 
-lme1 <- lme(d1 ~ 1 + phenotype, df1, ~ 1|individual, correlation = corCompSymm(form = ~ 1|individual))
-lme1
-lme1$modelStruct$reStruct
-lme2 <- lme(d1 ~ 1 + phenotype, data = df1, random = ~ 1|individual)
-lme2
-lme2$modelStruct$reStruct
+<!-- FUN1 <- function(X, pdata){ -->
+<!--   pdata$X <- X -->
+<!--   gls1 <- gls(X ~ 1 + phenotype, pdata, correlation = corCompSymm(form = ~ 1|individual)) -->
+<!--   gls0 <- gls(X ~ 1 + phenotype, pdata) -->
+<!--   anova(gls0, gls1)$`p-value`[2] -->
+<!-- } -->
 
-
-
-
-methods(class = class(gls1$modelStruct$corStruct))
-corMatrix(gls1$modelStruct$corStruct)
-
-lm1 <- lm(d1 ~ 1 + phenotype, df1)
-lm(d1 ~ 1 + phenotype + offset(as.numeric(phenotype)), df1)
-
-df2 <- df1
-df2$d1 <- df2$d1 - as.numeric(df1$phenotype)
-lm(d1 ~ 1 + phenotype, df2)
-lm1
-diff(predict(lm1, df1[c(1,11,21)+5,]))
-
-me1 <- lmer(d1 ~ 1 + phenotype + (1|individual), data = df1)
-
-logLik(me1)
-logLik(gls1)
-logLik(lme1)
-logLik(lme2)
-me1
-gls1
-lme1
-lme2
-
-diff(ranef(me1)$individual[,1])
-lmer(d1 ~ 1 + phenotype + (1|individual), data = df1)
-
-FUN1 <- function(Y, pdata){
-  apply(Y, 1, function(d1){
-    m1 <- lmer(d1 ~ 1 + phenotype + (1|individual), data = pdata)
-    #ranef(m1)$individual[,1]
-    getME(m1, "theta")
-  })
-}
-
-ranefs <- t(FUN1(edata[1:20,], pdata))
-dim(ranefs)
-hist(ranefs)
-
-```
-
-Test the correct specification of the model by doing a rotation of the null model !!
-(Ev. dies auch noch in die help files der funktion schreiben)
-
-
-
-<!-- Rang der Z-matrix ?! -->
-
-```{r}
-mod1 = cbind(c(1,1,1,1), c(1,1,0,0), c(0,0,1,1))
-qr(mod1)
-
-dec1 <-X.decomp(mod1, coef.d = 2:3)
-
-t(dec1$Xd) %*% mod1
-
-Q <-cbind(dec1$Xd, dec1$Xhe)
-
-zapsmall(t(Q) %*% dec1$Xd)
-
-```
-
-
-
-<!-- # Parallelisation -->
-
-<!-- ```{r message=FALSE, warning=FALSE, results='hide'} -->
-<!-- # register(SnowParam(7)) -->
+<!-- # for(i in 1:10){ -->
+<!-- #   edata <- matrix(rnorm(features * nrow(pdata)), features) -->
+<!-- # rownames(edata) <- paste("feature", 1:nrow(edata)) -->
 <!-- # -->
-<!-- # times <- list() -->
+<!-- # ps <- apply(edata, 1, FUN1, pdata = pdata) -->
 <!-- # -->
-<!-- # t1 = Sys.time() -->
-<!-- # res1 <- rotate.stat(init1, 700, statistic, -->
-<!-- #                     batch = pdata$batch, mod = mod1, coef = 2) -->
-<!-- # times$`700_serial` <- Sys.time()-t1 -->
-<!-- # -->
-<!-- # t1 = Sys.time() -->
-<!-- # res1 <- rotate.stat(init1, 700, statistic, -->
-<!-- #                     batch = pdata$batch, mod = mod1, coef = 2, -->
-<!-- #                     parallel = TRUE) -->
-<!-- # times$`700_parallel` = Sys.time()-t1 -->
-<!-- # -->
-<!-- # t1 = Sys.time() -->
-<!-- # res1 <- rotate.stat(init1, 7000, statistic, -->
-<!-- #                     batch = pdata$batch, mod = mod1, coef = 2, -->
-<!-- #                     parallel = TRUE) -->
-<!-- # times$`7000_parallel` = Sys.time()-t1 -->
-<!-- # -->
-<!-- # t1 = Sys.time() -->
-<!-- # res1 <- rotate.stat(init1, 14000, statistic, -->
-<!-- #                     batch = pdata$batch, mod = mod1, coef = 2, -->
-<!-- #                     parallel = TRUE) -->
-<!-- # times$`14000_parallel` = Sys.time()-t1 -->
-<!-- # -->
-<!-- # times -->
+<!-- # hist(ps) -->
+<!-- # } -->
+
+<!-- ##### fixed effect als coef.h -->
+
+<!-- me0 <- lmer(d1 ~ 1 + (1|individual), data = df1) -->
+<!-- me1 <- lmer(d1 ~ 1 + phenotype + (1|individual), data = df1) -->
+
+<!-- mod1 <- as.matrix(cbind(getME(me1, "X"), getME(me1, "Z"))) -->
+<!-- head(mod1) -->
+<!-- init2 <- init.randrot(Y = t(df1$d1), X = mod1, coef.h = 2) -->
+<!-- dim(init2$Xhe.Y.w) -->
+
+<!-- mod3 <- as.matrix(cbind(getME(me1, "X"), getME(me1, "Z")))[,-3] -->
+<!-- #mod3 <- model.matrix(~1 + phenotype + individual, df1) -->
+<!-- head(mod3) -->
+<!-- init3 <- init.randrot(Y = t(df1$d1), X = mod3, coef.h = 2) -->
+<!-- dim(init3$Xhe.Y.w) -->
+
+<!-- df2 <- df1 -->
+<!-- df2$d1 <- randrot(init2)[1,] -->
+
+<!-- df3 <- df1 -->
+<!-- df3$d1 <- randrot(init3)[1,] -->
+
+<!-- me0 -->
+<!-- lmer(d1 ~ 1 + (1|individual), data = df2) -->
+<!-- lmer(d1 ~ 1 + (1|individual), data = df3) -->
+
+<!-- me1 -->
+<!-- lmer(d1 ~ 1 + phenotype + (1|individual), data = df2) -->
+<!-- lmer(d1 ~ 1 + phenotype + (1|individual), data = df3) ### das müsste das richtige sein -->
+
+
+<!-- ############ Random effect als coef.h -->
+
+<!-- me0 <- gls(d1 ~ 1 + phenotype, data = df1) -->
+<!-- me1 <- lmer(d1 ~ 1 + phenotype + (1|individual), data = df1) -->
+
+<!-- mod1 <- as.matrix(cbind(getME(me1, "X"), getME(me1, "Z"))) -->
+<!-- head(mod1) -->
+<!-- init2 <- init.randrot(Y = t(df1$d1), X = mod1, coef.h = 3:5) -->
+<!-- dim(init2$Xhe.Y.w) -->
+
+<!-- df2 <- df1 -->
+<!-- df2$d1 <- randrot(init2)[1,] -->
+
+<!-- me0 -->
+<!-- gls(d1 ~ 1 + phenotype, data = df1) -->
+<!-- gls(d1 ~ 1 + phenotype, data = df2) -->
+
+<!-- me1 -->
+<!-- gls(d1 ~ 1 + phenotype, data = df1, corCompSymm(form = ~ 1|individual)) -->
+<!-- gls(d1 ~ 1 + phenotype, data = df2, corCompSymm(form = ~ 1|individual)) -->
+
+
+
+
+
+
+
+<!-- dec1 <- X.decomp(mod1, coef.d = c(1,3:5)) -->
+<!-- dim(dec1$Xd) -->
+<!-- dec1$rank -->
+<!-- qr(mod1)$rank -->
+<!-- qr.Q(qr(mod1)) -->
+
+<!-- dec3 <- X.decomp(mod3, coef.d = c(1,3:4)) -->
+<!-- dim(dec3$Xd) -->
+<!-- dec3$rank -->
+<!-- qr(mod3)$rank -->
+
+
+<!-- qr1 <- qr(mod1) -->
+<!-- qr(qr.Q(qr1))$rank -->
+<!-- zapsmall(qr.Q(qr1)) -->
+<!-- mod1 -->
+
+
+
+
+<!-- gls1 <- gls(d1 ~ 1 + phenotype, df1, correlation = corCompSymm(form = ~ 1|individual)) -->
+<!-- gls0 <- gls(d1 ~ 1 + phenotype, df1) -->
+<!-- gls1 -->
+
+<!-- anova(gls0, gls1) -->
+
+<!-- lme1 <- lme(d1 ~ 1 + phenotype, df1, ~ 1|individual, correlation = corCompSymm(form = ~ 1|individual)) -->
+<!-- lme1 -->
+<!-- lme1$modelStruct$reStruct -->
+<!-- lme2 <- lme(d1 ~ 1 + phenotype, data = df1, random = ~ 1|individual) -->
+<!-- lme2 -->
+<!-- lme2$modelStruct$reStruct -->
+
+
+
+
+<!-- methods(class = class(gls1$modelStruct$corStruct)) -->
+<!-- corMatrix(gls1$modelStruct$corStruct) -->
+
+<!-- lm1 <- lm(d1 ~ 1 + phenotype, df1) -->
+<!-- lm(d1 ~ 1 + phenotype + offset(as.numeric(phenotype)), df1) -->
+
+<!-- df2 <- df1 -->
+<!-- df2$d1 <- df2$d1 - as.numeric(df1$phenotype) -->
+<!-- lm(d1 ~ 1 + phenotype, df2) -->
+<!-- lm1 -->
+<!-- diff(predict(lm1, df1[c(1,11,21)+5,])) -->
+
+<!-- me1 <- lmer(d1 ~ 1 + phenotype + (1|individual), data = df1) -->
+
+<!-- logLik(me1) -->
+<!-- logLik(gls1) -->
+<!-- logLik(lme1) -->
+<!-- logLik(lme2) -->
+<!-- me1 -->
+<!-- gls1 -->
+<!-- lme1 -->
+<!-- lme2 -->
+
+<!-- diff(ranef(me1)$individual[,1]) -->
+<!-- lmer(d1 ~ 1 + phenotype + (1|individual), data = df1) -->
+
+<!-- FUN1 <- function(Y, pdata){ -->
+<!--   apply(Y, 1, function(d1){ -->
+<!--     m1 <- lmer(d1 ~ 1 + phenotype + (1|individual), data = pdata) -->
+<!--     #ranef(m1)$individual[,1] -->
+<!--     getME(m1, "theta") -->
+<!--   }) -->
+<!-- } -->
+
+<!-- ranefs <- t(FUN1(edata[1:20,], pdata)) -->
+<!-- dim(ranefs) -->
+<!-- hist(ranefs) -->
 
 <!-- ``` -->
+
+<!-- Test the correct specification of the model by doing a rotation of the null model !! -->
+<!-- (Ev. dies auch noch in die help files der funktion schreiben) -->
+
+
+
+<!-- <!-- Rang der Z-matrix ?! --> -->
+
+<!-- ```{r} -->
+<!-- mod1 = cbind(c(1,1,1,1), c(1,1,0,0), c(0,0,1,1)) -->
+<!-- qr(mod1) -->
+
+<!-- dec1 <-X.decomp(mod1, coef.d = 2:3) -->
+
+<!-- t(dec1$Xd) %*% mod1 -->
+
+<!-- Q <-cbind(dec1$Xd, dec1$Xhe) -->
+
+<!-- zapsmall(t(Q) %*% dec1$Xd) -->
+
+<!-- ``` -->
+
+
+
+<!-- <!-- # Parallelisation --> -->
+
+<!-- <!-- ```{r message=FALSE, warning=FALSE, results='hide'} --> -->
+<!-- <!-- # register(SnowParam(7)) --> -->
+<!-- <!-- # --> -->
+<!-- <!-- # times <- list() --> -->
+<!-- <!-- # --> -->
+<!-- <!-- # t1 = Sys.time() --> -->
+<!-- <!-- # res1 <- rotate.stat(init1, 700, statistic, --> -->
+<!-- <!-- #                     batch = pdata$batch, mod = mod1, coef = 2) --> -->
+<!-- <!-- # times$`700_serial` <- Sys.time()-t1 --> -->
+<!-- <!-- # --> -->
+<!-- <!-- # t1 = Sys.time() --> -->
+<!-- <!-- # res1 <- rotate.stat(init1, 700, statistic, --> -->
+<!-- <!-- #                     batch = pdata$batch, mod = mod1, coef = 2, --> -->
+<!-- <!-- #                     parallel = TRUE) --> -->
+<!-- <!-- # times$`700_parallel` = Sys.time()-t1 --> -->
+<!-- <!-- # --> -->
+<!-- <!-- # t1 = Sys.time() --> -->
+<!-- <!-- # res1 <- rotate.stat(init1, 7000, statistic, --> -->
+<!-- <!-- #                     batch = pdata$batch, mod = mod1, coef = 2, --> -->
+<!-- <!-- #                     parallel = TRUE) --> -->
+<!-- <!-- # times$`7000_parallel` = Sys.time()-t1 --> -->
+<!-- <!-- # --> -->
+<!-- <!-- # t1 = Sys.time() --> -->
+<!-- <!-- # res1 <- rotate.stat(init1, 14000, statistic, --> -->
+<!-- <!-- #                     batch = pdata$batch, mod = mod1, coef = 2, --> -->
+<!-- <!-- #                     parallel = TRUE) --> -->
+<!-- <!-- # times$`14000_parallel` = Sys.time()-t1 --> -->
+<!-- <!-- # --> -->
+<!-- <!-- # times --> -->
+
+<!-- <!-- ``` --> -->
 
 
 # Session info
