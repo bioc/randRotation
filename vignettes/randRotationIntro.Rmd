@@ -11,7 +11,7 @@ vignette: >
   %\VignetteIndexEntry{Random Rotation Package Introduction}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
-bibliography: ../inst/library.bib
+bibliography: ../inst/REFERENCES.bib
 link-citations: true
 ---
 
