@@ -4,8 +4,14 @@
 \alias{qqunif}
 \title{Quantile-Quantile plot of data sample against uniform theoretical quantiles}
 \usage{
-qqunif(ps, log = "xy", pch = 19, xlab = "theoretical quantiles",
-  ylab = "sample quantiles", ...)
+qqunif(
+  ps,
+  log = "xy",
+  pch = 19,
+  xlab = "theoretical quantiles",
+  ylab = "sample quantiles",
+  ...
+)
 }
 \arguments{
 \item{ps}{\code{numeric} vector of values (e.g. p-values). Values must be

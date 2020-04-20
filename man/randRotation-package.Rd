@@ -4,17 +4,26 @@
 \name{randRotation-package}
 \alias{randRotation}
 \alias{randRotation-package}
-\title{Random Rotation Methods for Exact Testing with Linear Models on High
-Dimensional Data}
+\title{randRotation: Random Rotation Methods for High Dimensional Data with Batch Structure}
 \description{
 A collection of methods for performing random orthogonal transformations (random rotations) on high-dimensional data (e.g. microarray or RNA-seq data) with batch structure.
     The random rotation approach allows exact testing of dependent test statistics with linear models following arbitrary (particularly non-linear) batch effect correction methods.
     The package further provides methods for estimating the local degrees of freedom (consumption) of idempotent (or approximately idempotent) data mappings.
 }
 \details{
-Please refer to the package vignette for further details on usage.
+Please refer to the package vignette for further details on usage and for
+a "quick start". \code{\link[randRotation:rotateStat]{rotateStat}} is
+basically the central function of the package.
+}
+\seealso{
+Useful links:
+\itemize{
+  \item \url{https://github.com/phettegger/randRotation}
+  \item Report bugs at \url{https://github.com/phettegger/randRotation/issues}
+}
+
 }
 \author{
-\strong{Maintainer}: Peter Hettegger \email{p.hettegger@gmail.com} (0000-0001-8557-588X)
+\strong{Maintainer}: Peter Hettegger \email{p.hettegger@gmail.com} (\href{https://orcid.org/0000-0001-8557-588X}{ORCID})
 
 }

@@ -1,6 +1,6 @@
 Package: randRotation
 Title: Random Rotation Methods for High Dimensional Data with Batch Structure
-Version: 0.99.1
+Version: 0.99.2
 Authors@R: 
     person(given = "Peter",
            family = "Hettegger",
@@ -13,22 +13,24 @@ Description: A collection of methods for performing random orthogonal transforma
 License: GPL-3
 biocViews: Software, Sequencing, BatchEffect, BiomedicalInformatics, RNASeq, Preprocessing, Microarray, DifferentialExpression, GeneExpression, Genetics, MicroRNAArray, Normalization, StatisticalMethod
 Encoding: UTF-8
-LazyData: true
-Imports: 
+LazyData: false
+Imports:
     methods,
     graphics,
     utils,
-    stats
-RoxygenNote: 7.1.0
+    stats,
+    Rdpack
 RdMacros: Rdpack
+RoxygenNote: 7.1.0
 Suggests: 
     knitr,
     BiocParallel,
     lme4,
-    Rdpack,
     rmarkdown,
     BiocStyle,
     testthat (>= 2.1.0),
     limma,
     sva
 VignetteBuilder: knitr
+URL: https://github.com/phettegger/randRotation
+BugReports: https://github.com/phettegger/randRotation/issues

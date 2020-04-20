@@ -29,7 +29,7 @@ The vectors in the generated random orthogonal matrices are distributed accordin
 \code{O(n)}, where \code{O(n)} is the set of orthogonal matrices of order \code{n}.
 Simplified and somewhat unprofessionally formulated, this means that the random orthogonal
 matrices are distributed "uniformly" in the space of random orthogonal matrices of dimension \code{n x n}.
-See also the \code{Examples} and \insertCite{Stewart1980a,mezzadri2006generate}{randRotation}.
+See also the \code{Examples} and \insertCite{Stewart1980a,Mezzadri2007}{randRotation}.
 }
 \examples{
 
