@@ -3,16 +3,26 @@
 \name{.fdr.qu}
 \alias{.fdr.qu}
 \alias{.fdr.q}
-\alias{.p.fdr}
+\alias{.pFdr}
 \title{Internal functions for p-value and FDR estimation}
 \usage{
-.fdr.qu(s0, stats, beta = 0.05, na.rm = FALSE, ref.vector = sort(s0,
-  decreasing = TRUE, na.last = TRUE))
+.fdr.qu(
+  s0,
+  stats,
+  beta = 0.05,
+  na.rm = FALSE,
+  ref.vector = sort(s0, decreasing = TRUE, na.last = TRUE)
+)
 
-.fdr.q(s0, stats, beta = 0.05, na.rm = FALSE, ref.vector = sort(s0,
-  decreasing = TRUE, na.last = TRUE))
+.fdr.q(
+  s0,
+  stats,
+  beta = 0.05,
+  na.rm = FALSE,
+  ref.vector = sort(s0, decreasing = TRUE, na.last = TRUE)
+)
 
-.p.fdr(s0, stats, method, pooled, na.rm, beta)
+.pFdr(s0, stats, method, pooled, na.rm, beta)
 }
 \arguments{
 \item{s0}{\code{numeric} vector of original (non-rotated) statistics.}
@@ -28,11 +38,11 @@ and \code{stats} the FDRs are approximated. All other points are
 approximated by spline interpolation. NAs are removed from ref.vector}
 
 \item{method}{A p-value or FDR adjustment method, see
-\code{\link[randRotation:p.fdr]{p.fdr}}.}
+\code{\link[randRotation:pFdr]{pFdr}}.}
 
 \item{pooled}{\code{logical}. \code{TRUE} if marginal distributions are
 exchangeable for all features so that rotated stats can be pooled, see
-\code{\link[randRotation:p.fdr]{p.fdr}}.}
+\code{\link[randRotation:pFdr]{pFdr}}.}
 }
 \value{
 \code{numeric} vector of (adjusted) p-value or FDR estimations for \code{s0}.
@@ -43,3 +53,4 @@ Internal functions for p-value and FDR estimation
 \references{
 \insertAllCited{}
 }
+\keyword{internal}

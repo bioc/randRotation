@@ -1,4 +1,4 @@
-test_that("Test execution of rotate.stat (including parallel computation mode), p.fdr with \"fdr.q\" and \"fdr.qu\"", {
+test_that("Test execution of rotateStat (including parallel computation mode), pFdr with \"fdr.q\" and \"fdr.qu\"", {
   set.seed(0)
   # Dataframe of phenotype data (sample information)
   pdata = data.frame(batch = rep(1:3, c(10,10,10)),
@@ -12,7 +12,7 @@ test_that("Test execution of rotate.stat (including parallel computation mode), 
 
   mod1 = model.matrix(~phenotype, pdata)
 
-  capture.output(init1 <- init.batch.randrot(edata, mod1, -1, pdata$batch))
+  capture.output(init1 <- initBatchRandrot(edata, mod1, -1, pdata$batch))
 
 
   statistic <- function(Y, batch, mod, coef){
@@ -22,23 +22,23 @@ test_that("Test execution of rotate.stat (including parallel computation mode), 
     t(abs(coef(fit1)[coef,]))
   }
 
-  res1 <- rotate.stat(initialised.obj = init1,
+  res1 <- rotateStat(initialised.obj = init1,
                       R = 100,
                       statistic = statistic,
                       batch = pdata$batch, mod = mod1, coef = 1:2,
                       parallel = FALSE)
 
 
-  expect_equal(sort(p.fdr(res1))[1:10], c(0.0047,0.0096,0.0143,0.0198,0.0286,0.0293,0.0324,0.0366,0.0429,0.0474), tolerance = 1e-7)
-  expect_equal(sort(p.fdr(res1, "fdr.q"))[1:10], c(0.4700000,0.9600000,0.9715805,0.9936457,0.9996935,0.9999904,0.9999931,0.9999982,0.9999998,0.9999999), tolerance = 1e-7)
-  expect_equal(sort(p.fdr(res1, "fdr.qu"))[1:10], c(0.4700000,0.9600000,0.9715805,0.9936457,0.9996935,0.9999904,0.9999931,0.9999982,0.9999998,0.9999999), tolerance = 1e-7)
+  expect_equal(sort(pFdr(res1))[1:10], c(0.0047,0.0096,0.0143,0.0198,0.0286,0.0293,0.0324,0.0366,0.0429,0.0474), tolerance = 1e-7)
+  expect_equal(sort(pFdr(res1, "fdr.q"))[1:10], c(0.4700000,0.9600000,0.9715805,0.9936457,0.9996935,0.9999904,0.9999931,0.9999982,0.9999998,0.9999999), tolerance = 1e-7)
+  expect_equal(sort(pFdr(res1, "fdr.qu"))[1:10], c(0.4700000,0.9600000,0.9715805,0.9936457,0.9996935,0.9999904,0.9999931,0.9999982,0.9999998,0.9999999), tolerance = 1e-7)
 
 
   ### Test for exact dimensions and for parallel processing
-  res1 <- rotate.stat(initialised.obj = init1, R = 10, statistic = statistic,
+  res1 <- rotateStat(initialised.obj = init1, R = 10, statistic = statistic,
                       batch = pdata$batch, mod = mod1, coef = 1:2,
                       parallel = TRUE)
-  expect_equal(dim(p.fdr(res1)), c(features,2))
+  expect_equal(dim(pFdr(res1)), c(features,2))
 
 
   #### If "statistic" returns only 1 number, not one for each feature --> this still has to work properly !
@@ -50,15 +50,15 @@ test_that("Test execution of rotate.stat (including parallel computation mode), 
     t(abs(coef(fit1)[coef,1]))
   }
 
-  res1 <- rotate.stat(initialised.obj = init1, R = 10, statistic = statistic,
+  res1 <- rotateStat(initialised.obj = init1, R = 10, statistic = statistic,
                       batch = pdata$batch, mod = mod1, coef = 1:2,
                       parallel = FALSE)
-  expect_equal(dim(p.fdr(res1)), c(1,2))
+  expect_equal(dim(pFdr(res1)), c(1,2))
 
-  res1 <- rotate.stat(initialised.obj = init1, R = 10, statistic = statistic,
+  res1 <- rotateStat(initialised.obj = init1, R = 10, statistic = statistic,
                       batch = pdata$batch, mod = mod1, coef = 2,
                       parallel = FALSE)
-  expect_equal(dim(p.fdr(res1)), c(1,1))
+  expect_equal(dim(pFdr(res1)), c(1,1))
 
 
   #### If "statistic" returns only 1 number, not one for each feature (this still has to work properly !)
@@ -71,10 +71,10 @@ test_that("Test execution of rotate.stat (including parallel computation mode), 
     t(abs(coef(fit1)[coef,1]))
   }
 
-  res1 <- rotate.stat(initialised.obj = init1, R = 1, statistic = statistic,
+  res1 <- rotateStat(initialised.obj = init1, R = 1, statistic = statistic,
                       batch = pdata$batch, mod = mod1, coef = 2,
                       parallel = FALSE)
 
-  expect_equal(dim(p.fdr(res1)), c(1,1))
+  expect_equal(dim(pFdr(res1)), c(1,1))
 
   })
