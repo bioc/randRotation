@@ -37,10 +37,10 @@ This function generates a randomly rotated dataset from an initialised
 randrot object (see \code{\link[randRotation:initRandrot]{initRandrot}}).
 See also package vignette for application examples. Only the numerical matrix
 of rotated data is returned, no design matrix, weights or other info is
-return for efficiency purposes. Please consider that if you e.g. use
+return for efficiency purposes. Please consider that, if you e.g. use
 \code{weights} or if you use
 \code{\link[randRotation:rotateStat]{rotateStat}}, you may need to forward
-the design matrix \code{X}, \code{weights} etc. to subsequent anylyses. See
+the design matrix \code{X}, \code{weights} etc. to subsequent analyses. See
 the example in \code{\link[randRotation:rotateStat]{rotateStat}}.
 
 Details on the calculation of a rotated datset are given in

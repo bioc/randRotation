@@ -7,7 +7,7 @@
 qqunif(
   ps,
   log = "xy",
-  pch = 19,
+  pch = 20,
   xlab = "theoretical quantiles",
   ylab = "sample quantiles",
   ...

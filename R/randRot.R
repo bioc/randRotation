@@ -26,7 +26,8 @@
 #' a full basis. \code{Xq} is further split into \code{Xd} and \code{Xhe}, where
 #' \code{Xd} corresponds to columns \code{coef.d} (non-\code{H0} or
 #' non-Null-Hypothesis columns) and \code{Xhe} correspond to all other columns
-#' (\code{H0} and error columns). No argument checks are performed for reasons
+#' (\code{H0} and error columns), see \code{\link[randRotation:initRandrot]{initRandrot}}.
+#' No argument checks are performed for reasons
 #' of performance as this function is called frequently by
 #' \code{\link[randRotation:initRandrot]{initRandrot}} when weights are used.
 #' See \insertCite{Langsrud2005}{randRotation} for further details.
@@ -682,10 +683,10 @@ setMethod("weights", "initBatchRandrot",
 #' randrot object (see \code{\link[randRotation:initRandrot]{initRandrot}}).
 #' See also package vignette for application examples. Only the numerical matrix
 #' of rotated data is returned, no design matrix, weights or other info is
-#' return for efficiency purposes. Please consider that if you e.g. use
+#' return for efficiency purposes. Please consider that, if you e.g. use
 #' \code{weights} or if you use
 #' \code{\link[randRotation:rotateStat]{rotateStat}}, you may need to forward
-#' the design matrix \code{X}, \code{weights} etc. to subsequent anylyses. See
+#' the design matrix \code{X}, \code{weights} etc. to subsequent analyses. See
 #' the example in \code{\link[randRotation:rotateStat]{rotateStat}}.
 #'
 #' Details on the calculation of a rotated datset are given in
@@ -975,8 +976,7 @@ setMethod("dimnames", "initBatchRandrot",
 
 #' Random orthogonal matrix
 #'
-#' Generation of a random \code{n x n} (random orthogonal
-#' matrix).
+#' Generation of a random orthogonal \code{n x n} matrix.
 #'
 #' @param n \code{numeric} of length 1 defining the dimensions of the \code{n x n} square matrix.
 #' @param type Either \code{"orthonormal"} or \code{"unitary"} defining whether a real orthonormal matrix or a complex unitary matrix should be returned.
@@ -989,10 +989,10 @@ setMethod("dimnames", "initBatchRandrot",
 #'
 #' This function was adapted from the pracma package (\code{\link[pracma:randortho]{pracma::randortho}}).
 #'
-#' The vectors in the generated random orthogonal matrices are distributed according to the Haar measure over
+#' The random orthogonal matrices are distributed with Haar measure over
 #' \code{O(n)}, where \code{O(n)} is the set of orthogonal matrices of order \code{n}.
-#' Simplified and somewhat unprofessionally formulated, this means that the random orthogonal
-#' matrices are distributed "uniformly" in the space of random orthogonal matrices of dimension \code{n x n}.
+#' The random orthogonal matrices are basically distributed "uniformly" in the
+#' space of random orthogonal matrices of dimension \code{n x n}.
 #' See also the \code{Examples} and \insertCite{Stewart1980a,Mezzadri2007}{randRotation}.
 #'
 #'
@@ -1048,7 +1048,7 @@ randorth <- function (n, type = c("orthonormal", "unitary"), I.matrix = FALSE)
 #'
 #' @return A random permutation matrix of dimension \code{n x n}
 #' @export
-#' @details This methods generates an orthogonal matrix with entries with only
+#' @details This methods generates an orthogonal matrix with only
 #'   one entry in each row and column being \code{1}, all other entries being
 #'   \code{0}.
 #' @examples
@@ -1067,6 +1067,7 @@ randpermut <- function(n){
 #' Estimation of degrees of freedom (df) for an arbitrary mapping function
 #'
 #' This function estimates the local degrees of freedom (df) of mapped data for an arbitrary mapping function.
+#' The estimation is done for a set of selected features.
 #'
 #' @param data A numerical data matrix.
 #' @param features Features for which the df should be estimated (default \code{sample(nrow(data),10)}).
@@ -1075,7 +1076,7 @@ randpermut <- function(n){
 #' @param ... Additional arguments passed to \code{mapping}.
 #' @param delta A numeric delta for the finite differences (default \code{sqrt(.Machine$double.eps)}).
 #'
-#' @return A vector of estimated df for each feature.
+#' @return A named numeric vector of estimated df for each feature. Names correspond to \code{features}.
 #' @export
 #'
 #' @details
@@ -1437,7 +1438,7 @@ pFdr <- function(obj, method = "none", pooled = TRUE, na.rm = FALSE, beta = 0.05
 #'
 #' @examples
 #' qqunif(runif(100))
-qqunif <- function(ps, log = "xy", pch = 19, xlab = "theoretical quantiles",
+qqunif <- function(ps, log = "xy", pch = 20, xlab = "theoretical quantiles",
 ylab = "sample quantiles", ...){
 
   if(any(!is.finite(ps) | ps > 1 | ps < 0))

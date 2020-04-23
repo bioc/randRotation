@@ -17,18 +17,17 @@ randorth(n, type = c("orthonormal", "unitary"), I.matrix = FALSE)
 A random orthogonal matrix of dimension \code{n x n}.
 }
 \description{
-Generation of a random \code{n x n} (random orthogonal
-matrix).
+Generation of a random orthogonal \code{n x n} matrix.
 }
 \details{
 A random orthogonal matrix \code{R} is generated in order that \code{t(R)} (for \code{"orthonormal"}) or \code{Conj(t(R))} (for \code{"unitary"}) equals the inverse matrix of \code{R}.
 
 This function was adapted from the pracma package (\code{\link[pracma:randortho]{pracma::randortho}}).
 
-The vectors in the generated random orthogonal matrices are distributed according to the Haar measure over
+The random orthogonal matrices are distributed with Haar measure over
 \code{O(n)}, where \code{O(n)} is the set of orthogonal matrices of order \code{n}.
-Simplified and somewhat unprofessionally formulated, this means that the random orthogonal
-matrices are distributed "uniformly" in the space of random orthogonal matrices of dimension \code{n x n}.
+The random orthogonal matrices are basically distributed "uniformly" in the
+space of random orthogonal matrices of dimension \code{n x n}.
 See also the \code{Examples} and \insertCite{Stewart1980a,Mezzadri2007}{randRotation}.
 }
 \examples{

@@ -16,7 +16,7 @@ A random permutation matrix of dimension \code{n x n}
 Generate a random permutation matrix for \code{n} samples.
 }
 \details{
-This methods generates an orthogonal matrix with entries with only
+This methods generates an orthogonal matrix with only
   one entry in each row and column being \code{1}, all other entries being
   \code{0}.
 }

@@ -26,7 +26,8 @@ By performing a full QR decomposition, \code{Xq} is automatically extended to
 a full basis. \code{Xq} is further split into \code{Xd} and \code{Xhe}, where
 \code{Xd} corresponds to columns \code{coef.d} (non-\code{H0} or
 non-Null-Hypothesis columns) and \code{Xhe} correspond to all other columns
-(\code{H0} and error columns). No argument checks are performed for reasons
+(\code{H0} and error columns), see \code{\link[randRotation:initRandrot]{initRandrot}}.
+No argument checks are performed for reasons
 of performance as this function is called frequently by
 \code{\link[randRotation:initRandrot]{initRandrot}} when weights are used.
 See \insertCite{Langsrud2005}{randRotation} for further details.

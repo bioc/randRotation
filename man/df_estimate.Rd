@@ -25,7 +25,7 @@ mapped data with the same dimensions. Any further arguments can be passed to \co
 \item{delta}{A numeric delta for the finite differences (default \code{sqrt(.Machine$double.eps)}).}
 }
 \value{
-A vector of estimated df for each feature.
+A named numeric vector of estimated df for each feature. Names correspond to \code{features}.
 }
 \description{
 This function estimates the local degrees of freedom (df) of mapped data for an arbitrary mapping function.

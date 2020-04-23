@@ -3,7 +3,7 @@ title: "Random Rotation Package Introduction"
 author: "Peter Hettegger"
 date: "`r Sys.Date()`"
 output:
-  BiocStyle::html_document:
+  BiocStyle::pdf_document:
     toc: TRUE
     fig_width: 4.7
     fig_height: 4
@@ -141,7 +141,8 @@ p.vals.nonrot <- p.vals.nonrot[,2]
 
 hist(p.vals.nonrot, col = "lightgreen");abline(h = 100, col = "blue", lty = 2)
 qqunif(p.vals.nonrot)
-plot(p.vals, p.vals.nonrot, log = "xy");abline(0,1, col = "blue", lty = 1)
+plot(p.vals, p.vals.nonrot, log = "xy", pch = 20)
+abline(0,1, col = 4, lwd = 2)
 ```
 
 We see that the p-values are non-uniformly distributed. See also section \@ref(skewed-null).
@@ -303,7 +304,7 @@ plot(density(log(p.rot/p0)), col = "salmon", "Log p ratios",
      panel.first = abline(v=0, col = "grey"),
      xlim = range(log(c(p.rot/p0, p.combat/p0))))
 lines(density(log(p.combat/p0)), col = "blue")
-legend("topleft", legend = c("log( p.combat / p0 )", "log( p.rot / p0 )"),
+legend("topleft", legend = c("log(p.combat/p0)", "log(p.rot/p0)"),
        lty = 1, col = c("blue", "salmon"))
 ```
 
@@ -311,10 +312,10 @@ We see the skew of the non-rotated p-values towards lower values. This is also s
 illustration below:
 
 ```{r}
-plot(p0, p.combat, log = "xy", pch = 19, col = "lightblue", ylab = "")
-points(p0, p.rot, pch = 19, col = "salmon")
+plot(p0, p.combat, log = "xy", pch = 20, col = "lightblue", ylab = "")
+points(p0, p.rot, pch = 20, col = "salmon")
 abline(0,1, lwd = 1.5, col = "black")
-legend("topleft", legend = c("p.combat", "p.rot"), pch = 19,
+legend("topleft", legend = c("p.combat", "p.rot"), pch = 20,
        col = c("lightblue", "salmon"))
 ```
 
@@ -322,7 +323,7 @@ The non-rotated p-values are on average lower than the rotated p-values:
 
 ```{r}
 plot(density(log(p.combat/p.rot)), col = "blue",
-     main = "log( p.combat / p.rot )", panel.first = abline(v=0, col = "grey"))
+     main = "log(p.combat / p.rot )", panel.first = abline(v=0, col = "grey"))
 ```
 
 
