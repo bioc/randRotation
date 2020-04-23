@@ -93,7 +93,7 @@ statistic <- function(Y, batch, mod){
 ```
 
 Note that larger values of the `statistic` function are considered as more significant
-in the subsequently used `pFdr` function. We thus take the absolute values of the coefficients in order to calculate two-sided (two-tailed) p-values with `pFdr`. We emphasize that we highly recommend using scale independent statistics
+in the subsequently used `pFdr` function. We thus take the absolute values of the coefficients in order to calculate two-sided (two-tailed) p-values with `pFdr`. We emphasize that we highly recommend using scale independent statistics (pivotal quantities)
 as e.g. t-values instead of parameter estimates (as with `coef`), see also `?randRotation::pFdr`. Nevertheless,
 we use `coef` here in order to avoid bulky function definitions.
 
@@ -120,6 +120,12 @@ qqunif(p.vals)
 
 We see that, as expected, our p-values are approximately uniformly distributed.
 
+**Hint:** The outlined procedure also works with `statistic` functions which
+return multiple columns (`rotateStat` and `pFdr` handle functions returning
+multiple columns adequately). So one could e.g. perform multiple batch effect
+correction methods and calculate the statistics of interest for each correction
+method. By doing this, one could subsequently evaluate the influence of
+different batch effect correction methods on the statistic of interest.
 
 **Additional info:** Below, the analysis pipeline is performed without rotation
 for comparison with the previous analyses.
