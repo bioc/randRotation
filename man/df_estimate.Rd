@@ -29,6 +29,7 @@ A named numeric vector of estimated df for each feature. Names correspond to \co
 }
 \description{
 This function estimates the local degrees of freedom (df) of mapped data for an arbitrary mapping function.
+The estimation is done for a set of selected features.
 }
 \details{
 The df are estimated as the rank of the local Jacobian matrix. It is thus the rank of the local linear approximation of the mapping function,

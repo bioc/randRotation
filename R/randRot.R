@@ -1325,14 +1325,18 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
 #'   distribution are exchangeable for all features, hence \code{pooled = TRUE}
 #'   by default.
 #'
-#'   If \code{weights} were specified when initialising the random rotation
+#'   If \code{method = "fdr.q"} or \code{method = "fdr.qu"} and
+#'   \code{weights} were specified when initialising the random rotation
 #'   object (see parameter \code{initialised.obj} in
-#'   \code{\link[randRotation:rotateStat]{rotateStat}}), the correlation
-#'   structure of hypothesis coefficients \code{coef.h} (see
-#'   \code{\link[randRotation:initRandrot]{initRandrot}}) is not preserved.
+#'   \code{\link[randRotation:rotateStat]{rotateStat}}), a warning is displayed.
+#'   The correlation structure (dependence structure) of linear model
+#'   coefficients between different features is not preserved if
+#'   different weights are used for different features.
 #'   Methods \code{fdr.q} and \code{fdr.qu} rely on preserved correlation
-#'   structure of hypothesis coefficients and thus should not be used in this
-#'   case. A warning is displayed if weights were specified.
+#'   structure of dependent statistics and thus should not be used if statistics
+#'   based on model coefficients (e.g. t statistics of model coefficients) are
+#'   used in combination with different weights.
+#'
 #'
 #'   \code{method = "fdr.q"} and \code{method = "fdr.qu"} were
 #'   adapted from package \code{fdrame}
