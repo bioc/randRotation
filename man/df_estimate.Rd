@@ -28,6 +28,7 @@ mapped data with the same dimensions. Any further arguments can be passed to \co
 A named numeric vector of estimated df for each feature. Names correspond to \code{features}.
 }
 \description{
+This function has been deprecated and will be defunct in the next release !
 This function estimates the local degrees of freedom (df) of mapped data for an arbitrary mapping function.
 The estimation is done for a set of selected features.
 }
@@ -47,7 +48,7 @@ So for each feature, a SVD decomposition of the \code{ncol(data) x ncol(data)} m
 This function should be considered experimental due to the common numerical issues associated with
 finite differences and numerical calculation of matrix ranks. So always check results for plausibility.
 
-An estimation of df is generated for each feature.
+An estimation of df is generated for each feature specified in \code{features}.
 }
 \examples{
 #set.seed(0)
@@ -64,9 +65,9 @@ rownames(edata) <- paste("feature", 1:nrow(edata))
 
 mod1 <- model.matrix(~phenotype, pdata)
 
-# The Combat function is a commonly used (mapping) function for batch effect correction:
+# The limma::removeBatchEffect function is a commonly used function for batch effect correction:
 mapping <- function(Y, batch, mod) {
-  sva::ComBat(Y, batch, mod)
+  limma::removeBatchEffect(x = Y, batch = batch, design = mod)
 }
 
 dfs <- df_estimate(edata, features = 1, mapping = mapping, batch = pdata$batch, mod = mod1)

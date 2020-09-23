@@ -50,7 +50,7 @@ X_decomp <- function(X = NULL, coef.d = seq_len(ncol(X)-1))
 
 
 initRandrot <- function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL,
-                         cormat = NULL)
+                        cormat = NULL)
 {
 
   if(is.null(X)) stop("Please specify X")
@@ -58,7 +58,13 @@ initRandrot <- function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL,
   if(is.null(Y) || ncol(Y) != nrow(X))
     stop("Number of rows in X (design matrix) and number of columns in Y do not match")
 
-  if(is.null(coef.h)) coef.h <- seq_len(ncol(X))
+  if(is.null(coef.h)){
+    if(!is.null(attr(X, "coef.h"))){
+      coef.h <- attr(X, "coef.h")
+    } else {
+      coef.h <- seq_len(ncol(X))
+    }
+  }
   if(length(coef.h) < 1) stop("length(coef.h) must be at least 1")
   if(length(coef.h) == 1 && coef.h == -1) coef.h = NULL
   if(!is.null(coef.h) && !all(coef.h %in% seq_len(ncol(X))))
@@ -133,6 +139,9 @@ initRandrot <- function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL,
 
   #### QR-decomposition of X
   decomp <- X_decomp(X.w, coef.d)
+
+  if(ncol(decomp$Xhe) < 1) warning("Dimension of random rotation matrix is 0x0.")
+  if(ncol(decomp$Xhe) == 1) warning("Dimension of random rotation matrix is 1x1.")
 
   Yd <- Y.w %*% decomp$Xd %*% t(decomp$Xd)
   dimnames(Yd) <- dimnames(Y)
@@ -215,6 +224,11 @@ initRandrotW <- function(Y, X, coef.h, coef.d, weights, cormat,
   dimnames(Yd) <- dimnames(Y)
 
   Xhe.Y.w <- vapply(seq_len(nrow(Y.w)), function(i){
+    if(ncol(decomp.list[[i]]$Xhe) < 1)
+      warning(paste0("Feature ", i, ": Dimension of random rotation matrix is 0x0."))
+    if(ncol(decomp.list[[i]]$Xhe) == 1)
+      warning(paste0("Feature ", i, ": Dimension of random rotation matrix is 1x1."))
+
     Y.w[i,,drop = FALSE] %*% decomp.list[[i]]$Xhe
   }, numeric(ncol(Y.w)-length(coef.d)))
 
@@ -247,7 +261,9 @@ initRandrotW <- function(Y, X, coef.h, coef.d, weights, cormat,
 #'   \code{X[,coef.d]} does not have full rank, see Details.
 #' @param coef.h single integer or vector of integers specifying the "hypothesis
 #'   coefficients" (\code{H0} coefficients). \code{coef.h} should correspond to
-#'   the last columns in \code{X} (see \code{Details}). By default, all
+#'   the last columns in \code{X} (see \code{Details}). If available,
+#'   \code{attr(X, "coef.h")} is used, see
+#'   \code{\link[randRotation:contrastModel]{contrastModel}}. By default, all
 #'   coefficients are set as \code{H0} coefficients. If \code{coef.h} is set
 #'   \code{-1}, no coefficient is set as \code{H0} coefficient.
 #' @param weights numerical matrix of finite positive weights > 0 (as in
@@ -459,8 +475,7 @@ setClass("rotateStat", contains = "list")
 initBatchRandrot <- function(Y = NULL, X = NULL, coef.h = NULL, batch = NULL,
                                weights = NULL, cormat = NULL)
 {
-
-  if(is.null(batch) || length(batch) != ncol(Y))
+  if(is.null(batch) || (length(batch) != ncol(Y)))
     stop("Please specify batch variable with length(batch) being equal to ncol(Y)")
 
   tmp1 <- seq_along(batch)
@@ -529,6 +544,67 @@ setMethod("initRandrot", "list",
           function(Y = NULL, X = Y$design, coef.h = NULL, weights = Y$weights, cormat = NULL){
             initRandrot(Y = Y$E, X = X, coef.h = coef.h, weights = weights, cormat = cormat)
           })
+
+
+
+
+
+#' Create transformed model matrix for contrast rotation
+#'
+#' This function takes a model matrix \code{X} and a contrast matrix \code{C}
+#' and creates a transformed model matrix corresponding to a transformed set
+#' of coefficients.
+#'
+#' @param X \code{(numeric)} model matrix with dimensions
+#' \code{samples x coefficients}.
+#' @param C \code{(numeric)} contrast matrix with dimensions
+#' \code{coefficients x contrasts}. The contrast matrix must have full column rank.
+#' @param coef.h column numbers of contrasts (in \code{C}) which should be set
+#' as \code{coef.h} in the transformed model, see
+#' \code{\link[randRotation:initRandrot]{initRandrot}}. All columns are set as
+#' \code{coef.h} by default.
+#'
+#' @details
+#' The last n coefficients of the transformed model matrix correspond to the n
+#' contrasts. By default, all contrasts are set as \code{coef.h}.
+#' See package vignette for examples of data rotations with contrasts.
+#'
+#' @return A transformed model matrix with \code{coef.h} set as attribute.
+#' @export
+#' @author Peter Hettegger
+#' @examples
+#'
+#' group <- c("A", "A", "B", "B")
+#' X <- model.matrix(~0+group)
+#' C <- cbind(contrast1 = c(1, -1))
+#' X2 <- contrastModel(X, C)
+contrastModel <- function(X, C, coef.h = seq_len(ncol(C))){
+
+  if(!(is.matrix(X)) || (!is.matrix(C)))
+    stop("X and C must be numeric matrices.")
+
+  stopifnot(ncol(X) == nrow(C))
+
+  c1 <- ncol(C)
+  k1 <- nrow(C)
+
+  qr1 <- qr(C)
+
+  if(qr1$rank != c1) stop("C must have full column rank.")
+
+  Q.s <- qr.Q(qr1, TRUE)
+  Q.s <- Q.s[,c((c1+1):k1, seq_len(c1))]
+
+  R <- qr.R(qr1)
+  R.sti <- diag(k1)
+  R.sti[(k1-c1+1):k1, (k1-c1+1):k1] <- forwardsolve(t(R), diag(ncol(R)))
+
+  X.transformed <- X %*% Q.s %*% R.sti
+  coef.h <- ((k1-c1+1):k1)[coef.h]
+  attr(X.transformed, "coef.h") <- coef.h
+  colnames(X.transformed)[coef.h] <- colnames(C)
+  X.transformed
+}
 
 
 
@@ -1015,13 +1091,14 @@ setMethod("dimnames", "initBatchRandrot",
 #'
 randorth <- function (n, type = c("orthonormal", "unitary"), I.matrix = FALSE)
 {
-
-
   if(I.matrix) return(diag(n))
   ### this function was adapted from the pracma package (randortho function)
 
   stopifnot(is.numeric(n), length(n) == 1, floor(n) == ceiling(n),
-            n >= 1)
+            n >= 0)
+
+  if(n == 0) return(matrix(1,0,0))
+
   type <- match.arg(type)
   if (type == "orthonormal") {
     z <- matrix(rnorm(n^2), n)
@@ -1066,6 +1143,7 @@ randpermut <- function(n){
 
 #' Estimation of degrees of freedom (df) for an arbitrary mapping function
 #'
+#' This function has been deprecated and will be defunct in the next release !
 #' This function estimates the local degrees of freedom (df) of mapped data for an arbitrary mapping function.
 #' The estimation is done for a set of selected features.
 #'
@@ -1095,7 +1173,7 @@ randpermut <- function(n){
 #' This function should be considered experimental due to the common numerical issues associated with
 #' finite differences and numerical calculation of matrix ranks. So always check results for plausibility.
 #'
-#' An estimation of df is generated for each feature.
+#' An estimation of df is generated for each feature specified in \code{features}.
 #' @examples
 #' #set.seed(0)
 #'
@@ -1111,9 +1189,9 @@ randpermut <- function(n){
 #'
 #' mod1 <- model.matrix(~phenotype, pdata)
 #'
-#' # The Combat function is a commonly used (mapping) function for batch effect correction:
+#' # The limma::removeBatchEffect function is a commonly used function for batch effect correction:
 #' mapping <- function(Y, batch, mod) {
-#'   sva::ComBat(Y, batch, mod)
+#'   limma::removeBatchEffect(x = Y, batch = batch, design = mod)
 #' }
 #'
 #' dfs <- df_estimate(edata, features = 1, mapping = mapping, batch = pdata$batch, mod = mod1)
@@ -1121,7 +1199,8 @@ randpermut <- function(n){
 
 df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., delta = sqrt(.Machine$double.eps))
 {
-  if(!is.matrix(data) | !is.numeric(data))stop("data must be a numeric matrix.")
+  .Deprecated()
+  if(!is.matrix(data) || !is.numeric(data))stop("data must be a numeric matrix.")
   if(abs(delta) == 0) stop("abs(delta) must be > 0.")
 
   m <- mapping(data, ...)
@@ -1154,7 +1233,7 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
 #' @param beta \code{numeric} between 0 and 1. See \insertCite{Yekutieli1999}{randRotation}.
 #' @param na.rm \code{logical}. Should missing values be removed ?
 #' @param ref.vector Reference vector defining at which grid points of \code{s0}
-#'   and \code{stats} the FDRs are approximated. All other points are
+#'   and (\code{stats}) the FDRs are approximated. All other points are
 #'   approximated by spline interpolation. NAs are removed from ref.vector
 #'
 #' @return \code{numeric} vector of (adjusted) p-value or FDR estimations for \code{s0}.
@@ -1166,6 +1245,8 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
                     ref.vector = sort(s0, decreasing = TRUE, na.last = TRUE))
 {
   ref.vector <- ref.vector[!is.na(ref.vector)]
+  stats.max <- max(stats, na.rm = na.rm)
+  ref.vector <- ref.vector[ref.vector <= stats.max]
   ref.vector.size <- length(ref.vector)
 
   r.vector <- vapply(ref.vector,
@@ -1187,7 +1268,8 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
 
   qu.value <- cummax(qu.value)
 
-  approx(spline(ref.vector, qu.value), xout = abs(s0))$y
+
+  approx(spline(ref.vector, qu.value), xout = abs(s0), rule = 2)$y
 }
 
 #' @rdname fdr_p
@@ -1196,6 +1278,8 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
                    ref.vector = sort(s0, decreasing = TRUE, na.last = TRUE))
 {
   ref.vector <- ref.vector[!is.na(ref.vector)]
+  stats.max <- max(stats, na.rm = na.rm)
+  ref.vector <- ref.vector[ref.vector <= stats.max]
   ref.vector.size <- length(ref.vector)
 
   r.vector <- vapply(ref.vector,
@@ -1217,7 +1301,7 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
   }
   q.value <- rev(cummin(rev(q.value)))
 
-  approx(spline(ref.vector, q.value), xout = abs(s0))$y
+  approx(spline(ref.vector, q.value), xout = abs(s0), rule = 2)$y
 }
 
 #' @param method A p-value or FDR adjustment method, see
@@ -1299,6 +1383,9 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
 #'   calculated and passed to \code{\link[stats:p.adjust]{stats::p.adjust}} for
 #'   p-value adjustment. So these methods provide resampling based p-values with
 #'   (non-resampling based) p-value adjustment.
+#'   \code{method = "fdr.q"} and \code{method = "fdr.qu"} were
+#'   adapted from package \code{fdrame}
+#'   \insertCite{Fdrame2019,Reiner2003}{randRotation}.
 #'
 #'   When \code{pooled = TRUE},
 #'   marginal distributions of the test statistics are considered exchangeable
@@ -1309,7 +1396,7 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
 #'   \code{\link[randRotation:rotateStat]{rotateStat}}) are required.
 #'   We want to emphasize that in order for the marginal distributions to be
 #'   exchangeable, the statistics must be a pivotal quantity (i.e. it must be
-#'   scale independent)
+#'   scale independent).
 #'   Pivotal quantities are e.g. t values. Using e.g. linear models
 #'   with \code{coef} as statistics is questionable if the different features
 #'   are measured on different scales. The resampled coefficients then
@@ -1336,11 +1423,6 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
 #'   structure of dependent statistics and thus should not be used if statistics
 #'   based on model coefficients (e.g. t statistics of model coefficients) are
 #'   used in combination with different weights.
-#'
-#'
-#'   \code{method = "fdr.q"} and \code{method = "fdr.qu"} were
-#'   adapted from package \code{fdrame}
-#'   \insertCite{Fdrame2019,Reiner2003}{randRotation}.
 #'
 #'   P-values and FDRs are calculated for each column of \code{obj$s0}
 #'   separately.
@@ -1437,7 +1519,7 @@ pFdr <- function(obj, method = "none", pooled = TRUE, na.rm = FALSE, beta = 0.05
 #' @param ylab Label for the y axis.
 #' @param ... Graphical parameters forwarded to \code{\link[stats:qqnorm]{qqplot}}
 #'
-#' @return \code{qqunif} returns \code{NULL}.
+#' @return A list of \code{x} and {y} coordinates, as in \code{\link[stats:qqnorm]{qqplot}}.
 #' @export
 #'
 #' @examples
@@ -1449,10 +1531,10 @@ ylab = "sample quantiles", ...){
     stop("Values of ps must be between 0 and 1.")
 
   ## Q-Q plot for Unif data against true theoretical distribution
-  qqplot(ppoints(ps), ps, main = expression("Q-Q plot for" ~~ {Unif(0,1)}),
+  res <- qqplot(ppoints(ps), ps, main = expression("Q-Q plot for" ~~ {Unif(0,1)}),
          log = log, pch = pch, xlab = xlab, ylab = ylab, ...)
   abline(0,1, col = 2,lwd=2,lty=2)
-  invisible()
+  invisible(res)
 }
 
 

@@ -40,7 +40,6 @@ test_that("Random rotation gives same coefficients if all coefs are set as coef.
   expect_equal(coefs, coefs.rot)
 
 
-
   #### Test with correlation matrix and weights specified
 
   library(lme4)

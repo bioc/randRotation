@@ -29,7 +29,7 @@ scale. Either \code{""}, \code{"x"}, \code{"y"} or \code{"xy"}.}
 \item{...}{Graphical parameters forwarded to \code{\link[stats:qqnorm]{qqplot}}}
 }
 \value{
-\code{qqunif} returns \code{NULL}.
+A list of \code{x} and {y} coordinates, as in \code{\link[stats:qqnorm]{qqplot}}.
 }
 \description{
 \code{qqunif} produces a QQ plot of the values in \code{ps} against the

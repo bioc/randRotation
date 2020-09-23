@@ -43,6 +43,9 @@ Larger values of obj$s0 are considered more significant when
   calculated and passed to \code{\link[stats:p.adjust]{stats::p.adjust}} for
   p-value adjustment. So these methods provide resampling based p-values with
   (non-resampling based) p-value adjustment.
+  \code{method = "fdr.q"} and \code{method = "fdr.qu"} were
+  adapted from package \code{fdrame}
+  \insertCite{Fdrame2019,Reiner2003}{randRotation}.
 
   When \code{pooled = TRUE},
   marginal distributions of the test statistics are considered exchangeable
@@ -53,7 +56,7 @@ Larger values of obj$s0 are considered more significant when
   \code{\link[randRotation:rotateStat]{rotateStat}}) are required.
   We want to emphasize that in order for the marginal distributions to be
   exchangeable, the statistics must be a pivotal quantity (i.e. it must be
-  scale independent)
+  scale independent).
   Pivotal quantities are e.g. t values. Using e.g. linear models
   with \code{coef} as statistics is questionable if the different features
   are measured on different scales. The resampled coefficients then
@@ -80,11 +83,6 @@ Larger values of obj$s0 are considered more significant when
   structure of dependent statistics and thus should not be used if statistics
   based on model coefficients (e.g. t statistics of model coefficients) are
   used in combination with different weights.
-
-
-  \code{method = "fdr.q"} and \code{method = "fdr.qu"} were
-  adapted from package \code{fdrame}
-  \insertCite{Fdrame2019,Reiner2003}{randRotation}.
 
   P-values and FDRs are calculated for each column of \code{obj$s0}
   separately.

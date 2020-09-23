@@ -3,7 +3,7 @@ title: "Random Rotation Package Introduction"
 author: "Peter Hettegger"
 date: "`r Sys.Date()`"
 output:
-  BiocStyle::html_document:
+  BiocStyle::pdf_document:
     toc: TRUE
     fig_width: 4.7
     fig_height: 4
@@ -20,13 +20,15 @@ knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
 )
+options(digits = 4)
+rm(list = ls())
 ```
 
 
 # Introduction
 
 `randRotation` is an R package intended for generation of randomly rotated data to resample null distributions of linear model based dependent test statistics. See also [@Yekutieli1999] for resampling dependent test statistics. The main application is to resample test statistics on linear model coefficients following arbitrary batch effect correction methods, see also section [Quick start](#quick-start). The random rotation methodology is thereby applicable for linear models in combination with normally distributed data. Note that the resampling procedure is actually based on random orthogonal matrices, which is a broader class than random rotation matrices. Nevertheless, we adhere to the naming convention of [@Langsrud2005] designating this approach as random rotation methodology.
-Possible applications for resampling by roation, that are outlined in this document, are: (i) linear models in combination with practically arbitrary (linear or non-linear) batch effect correction methods, section \@ref(BE-correction); (ii) generation of resampled datasets for evaluation of data analysis pipelines, section \@ref(unskewed); (iii) calculation of resampling based test statistics for calculating resampling based p-values and false discovery rates (FDRs), sections \@ref(unskewed) and \@ref(FDR); and (iv) estimation of the degrees of freedoms (df) of mapping functions, section \@ref(dfest).
+Possible applications for resampling by roation, that are outlined in this document, are: (i) linear models in combination with practically arbitrary (linear or non-linear) batch effect correction methods, section \@ref(BE-correction); (ii) generation of resampled datasets for evaluation of data analysis pipelines, section \@ref(unskewed); (iii) calculation of resampling based test statistics for calculating resampling based p-values and false discovery rates (FDRs), sections \@ref(unskewed) and \@ref(FDR); and (iv) batch effect correction with linear mixed models \@ref(mixed-mod).
 
 Generally, the rotation approach provides a methodology for generating resampled data in the context of linear models and thus potentially has further conceivable areas of applications in high-dimensional data analysis with dependent variables. Nevertheless, we focus this document on the outlined range of issues in order to provide an intuitive and problem-centered introduction.
 
@@ -157,7 +159,7 @@ We see that the p-values are non-uniformly distributed. See also section \@ref(s
 
 In the random rotation methodology, the observed data vectors (for each feature) are
 rotated in way that the *determined* coefficients ($\boldsymbol{B_D}$ in @Langsrud2005)
-stay constant when resampling under the null hypothesis $H0: \boldsymbol{B_H = 0}$, see [@Langsrud2005].
+stay constant when resampling under the null hypothesis $H_0: \boldsymbol{B_H = 0}$, see [@Langsrud2005].
 
 The following example shows that the intercept coefficient of the *null model* does not change when rotation is performed under the null hypothesis:
 
@@ -184,7 +186,7 @@ head(cbind(coef01, coef02))
 all.equal(coef01, coef02)
 ```
 
-However, the coefficients of the *full model* do change when rotation is performed under the null hypothesis:
+However, the coefficients of the *full model* do change (for this parametrisation) when rotation is performed under the null hypothesis:
 
 ```{r}
 coef11 <- coefs(edata, mod1)
@@ -194,6 +196,19 @@ head(cbind(coef11, coef12))
 ```
 
 This is in principle how resampling based tests are constructed.
+Note that the change in both coefficients is due to parametrisation of the model. Compare e.g. the following
+parametrisation, where the *determined* coefficient (Intercept) does not change:
+
+```{r}
+mod2 <- mod1
+mod2[,2] <- mod2[,2] - 0.5
+
+coef11 <- coefs(edata, mod2)
+coef12 <- coefs(randrot(rr), mod2)
+
+head(cbind(coef11, coef12))
+```
+
 
 # Batch effect correction with subsequent linear model analysis {#BE-correction}
 
@@ -257,7 +272,7 @@ The histogram and Q-Q plot clearly show that the null-distribution of p-values i
 In the following, we take the data analysis pipeline of the previous section and incorporate it into the
 random rotation environment. The `initBatchRandrot` function initialises the random rotation
 object with the design matrix of the linear model. We thereby specify the coefficients associated with
-the null hypothesis $H0$ (see also \@ref(basic-principle)) with `coef.h`. 
+the null hypothesis $H_0$ (see also \@ref(basic-principle)) with `coef.h`. 
 Additionally, the batch covariate is provided.
 
 Note that the implementation with `initBatchRandrot` in principle implicitly assumes a block design of the correlation matrix and restricted roation matrix, see also \@ref{nonblock}.
@@ -284,7 +299,7 @@ Data rotation and calling the `statistic` function is performed with `rotateStat
 
 ```{r message=FALSE, results='hide'}
 res1 <- rotateStat(initialised.obj = init1, R = 10, statistic = statistic,
-                    batch = pdata$batch, mod = mod1, coef = 2)
+                   batch = pdata$batch, mod = mod1, coef = 2)
 ```
 
 As we use pooling of rotated statistics, `R = 10` resamples should be sufficient (see also \@ref(number-resamples)).
@@ -340,7 +355,7 @@ used for estimating resampling based false discovery rates [@Yekutieli1999].
 
 ```{r}
 fdr.q  <- pFdr(res1, "fdr.q")
-fdr.qu <- pFdr(res1, "fdr.q")
+fdr.qu <- pFdr(res1, "fdr.qu")
 fdr.BH <- pFdr(res1, "BH")
 
 FDRs <- cbind(fdr.q, fdr.qu, fdr.BH)
@@ -356,58 +371,228 @@ head(FDRs.sorted)
 
 ```
 
+## Contrasts {#contrasts}
 
+The random rotation methodology can also be applied for contrasts. We introduce
+an artificial group effect between group 2 and group 3 for the first 100 features (we use that later in \@ref(number-resamples)).
 
-# How many resamples ? {#number-resamples}
+```{r warning=FALSE}
+edata[,] <- rnorm(length(edata))
+group <- as.factor(rep(1:3, 10))
 
-As a rule of thumb, the number of resampled values of our statistic of interest should be at least as high as the number of features in order to reach unskewed null distributions (for n features --> with a p-value of 1/n you still expect 1 significant feature). If the marginal distributions of the statistics are exchangeable (see also `?randRotation::pFdr`) pooling of the rotated statistics can be used.
-By pooling rotated statistics, the number of random rotations can be substantially reduced.
+# add group effect for the first 100 features
+group.effect <- rep(c(0,0,1), 10)
+edata[1:100,] <- t(t(edata[1:100,]) + group.effect)
 
+mod.groups <- model.matrix(~ group)
 
-# Degrees of freedom (df) estimation {#dfest}
-
-The method `df_estimate` can be used for estimating the local degrees of freedom
-of mapped data for an arbitrary mapping function.
-The local degrees of freedom are thereby estimated as
-the rank of the local linear approximation of the mapping (so the rank of
-the Jacobian matrix). See also `?df_estimate` for further details.
-
-In the following we provide some examples of mapping functions.
-For information on the dataset and model matrix, please refer to \@ref(dataset) and \@ref(quick-start).
-
-```{r}
-mapping <- function(Y) abs(Y)
-df_estimate(edata, mapping = mapping)
-ncol(edata)
+contrasts1 <- limma::makeContrasts("2vs3" = group2 - group3,
+                                   levels = mod.groups)
+contrasts1
 ```
-As expected, `edata` and `mapping(edata)` have equal degrees of freedom.
-So the mapping function `abs` *consumes* no df.
+
+Using `contrastModel` we transform our model matrix to a new model matrix (with
+same dimensions as `mod.groups`) which includes the contrast as last coefficient.
+Thereby, all contrasts are set as `coef.h` (in the attributes of `mod.cont`).
 
 ```{r}
-mapping <- function(Y) floor(Y)
-df_estimate(edata, mapping = mapping)
+mod.cont <- contrastModel(X = mod.groups, C = contrasts1)
 ```
-As expected, the `floor` function consumes all degrees of freedom (as long as
-the variations are small).
 
-A more practical example is e.g. using `removeBatchEffect` from the `r Biocpkg("limma")`
-package for removing batch effects from data:
+The random rotation object is automatically initalised with the contrasts
+set as `coef.h`:
 
 ```{r}
-mapping <- function(Y, batch, mod) {
-  limma::removeBatchEffect(Y, batch = batch, design = mod)
+init1 <- initBatchRandrot(edata, mod.cont, batch = pdata$batch)
+```
+
+Similarly to above, we can now test our contrast in the batch effect adjusted
+data using random rotations:
+
+```{r message=FALSE, results='hide', warning=FALSE}
+statistic <- function(Y, batch, mod, cont){
+  Y.tmp <- sva::ComBat(dat = Y, batch = batch, mod = mod)
+
+  fit1 <- limma::lmFit(Y.tmp, mod)
+  
+  fit1 <- limma::contrasts.fit(fit1, cont)
+  fit1 <- limma::eBayes(fit1)
+  
+  # The "abs" is needed for "pFdr" to calculate 2-tailed statistics
+  abs(fit1$t[,1])
 }
 
-df_estimate(edata, mapping = mapping, batch = pdata$batch, mod = mod1)
+res1 <- rotateStat(initialised.obj = init1, R = 20, statistic = statistic,
+                   batch = pdata$batch, mod = mod.groups, cont = contrasts1)
 ```
 
-As we have 3 batches, the mapping function consumes 2 df by estimating
-the 2 batch effect coefficients.
+We calculate the rotation based p-values with `pFdr`:
 
+```{r}
+p.rot <- pFdr(res1)
+head(p.rot)
+
+hist(p.rot, freq = FALSE, col = "lightgreen", breaks = seq(0,1,0.1))
+abline(1,0, col = "blue", lty = 2)
+qqunif(p.rot)
+```
+
+
+# How many rotations ? {#number-resamples}
+
+The sufficient number of rotations `R` for simulating the null-distribution of our statistic of interest
+depends on multiple factors and is different for each application. A possible guiding principle
+for finding a sufficient number of resamples could be the following.
+
+Increase the number of resamples `R` until:
+
+* the rotation procedure provides an adequately smooth null-distribution of the statistic of interest.
+* the results (e.g. the number of features with `fdr < 0.05`) and/or null-distribution do not change substantially if the rotation procedure is repeated with the same `R`.
+
+Consequently, `R` must be increased if one needs high precision in the tail regions of the null distribution (so e.g. if `fdr < 0.01` is used instead of `fdr < 0.05`). Nevertheless, note that the ordering of the features does not change if `R` is increased.
+
+Large `R` might be required if e.g. features are highly dependent. In this case, for a single rotation, the resulting values of our statistic are highly similar and thus only *small intervals of the null-distribution* are simulated.
+
+The following figure shows the null distribution (`R = 20`) and the test values of the example given in \@ref(contrasts):
+
+```{r}
+plot(density(res1$s0), main = "", ylim = c(0,1), col = 2)
+lines(density(res1$stats[[1]]), col = 1)
+legend("topright", col = 1:2, lty = 1,
+       legend = c("null-distribution by rotation", "test statistic"))
+```
+
+We repeat the rotation procedure with `R = 20`:
+
+```{r message=FALSE, results='hide', warning=FALSE}
+res2 <- rotateStat(initialised.obj = init1, R = 20, statistic = statistic,
+                   batch = pdata$batch, mod = mod.groups, cont = contrasts1)
+
+p.rot2 <- pFdr(res2)
+
+plot(density(res2$s0), main = "", ylim = c(0,1), col = 2)
+lines(density(res2$stats[[1]]), col = 1)
+legend("topright", col = 1:2, lty = 1,
+       legend = c("null-distribution by rotation", "test statistic"))
+```
+
+Comparing the p-values shows:
+
+```{r}
+plot(p.rot, p.rot2, pch = 19, log = "xy")
+abline(0,1, col = "red")
+```
+
+Together, these plots suggest, that `R = 20` is sufficient for this dataset.
+
+Note that with `pFdr(res1)`, we assumed that the marginal distributions of the statistics are exchangeable (see also `?randRotation::pFdr`) and thus pooling of the rotated statistics can be used. By pooling rotated statistics, the number of random rotations can be substantially reduced.
 
 # Correlation matrices with non-block design {#nonblock}
 
 Function `initBatchRandrot` implicitly assumes a block design of the sample correlation matrix and the restricted rotation matrix (see also `?randRotation::initBatchRandrot`). This means that correlations between samples are allowed within batches, but are zero between batches. Simply put, biological replicates or technical replicates (or any other cause of non-zero sample correlation) are contained within single batches and are not distributed to different batches. In this case, each batch has his own sample correlation matrix and correlation coefficients between batches are assumed to be zero. This assumption seems restrictive at first view, but is computationally efficient, as the random rotation can be performed for each batch independently. This is how `initBatchRandrot` is implemented. However, a general correlation matrix with non-block design (non-zero sample correlations between batches) can be initialised with `initRandrot`. Thus, `initBatchRandrot` simply provides a comfortable wrapper for sample correlation matrices with block design or for rotation of data with batch structure. For a correlation matrix of $I_{n \times n}$, `initRandrot` and `initBatchRandrot` are practically equivalent.
+
+
+# Batch effect correction with linear mixed models {#mixed-mod}
+
+## Sample dataset
+
+We now assume to have a dataset of repeated measures. We assume to have taken
+biopsies of 15 individuals. From each individual we have taken 1
+biopsy of healthy control tissue and 1 biopsy of cancer tissue. This is
+a possible application for mixed models with the covariate "individual" as
+random effect. The hypothetic dataset was generated in 3 batches.
+
+```{r}
+pdata$individual <- sort(c(1:15, 1:15))
+colnames(pdata)[2] <- "tissue"
+pdata$tissue <- c("Control", "Cancer")
+pdata
+```
+
+As sample dataset, we take random normally distributed data with a random
+normally distributed individual effect (both with variance 1).
+
+```{r}
+edata[,] <- rnorm(length(edata))
+for(i in seq(1,ncol(edata),2)){
+  tmp1 <- rnorm(nrow(edata))
+  edata[,i] <- edata[,i] + tmp1
+  edata[,i+1] <- edata[,i+1] + tmp1
+}
+```
+
+## Estimation of `cormat`
+
+For random rotation of the dataset, we need an estimate of the correlation
+matrix `cormat` between sample replicates (of course different approaches than
+the following are possible for estimating `cormat`). As the data is not batch 
+effect corrected, we estimate the correlation matrix for each batch separately
+and then average over all features and batches.
+
+```{r}
+library(nlme)
+df1 <- data.frame(pdata, d1 = edata[1,])
+spl1 <- split(1:nrow(pdata), pdata$batch)
+
+covs1 <- function(., df1, i){
+  df1$d1 <- .
+
+  me1 <- lme(d1 ~ tissue, data = df1[i,], random = ~1|individual)
+  getVarCov(me1, type = "marginal")[[1]]
+}
+
+covs1 <- sapply(spl1,
+                function(samps)rowMeans(apply(edata, 1, covs1, df1, samps)))
+cov1 <- matrix(rowMeans(covs1), 2, 2)
+cormat <- cov2cor(cov1)
+cormat
+```
+
+As expected, the sample correlation is roughly 0.5, as the residual variance
+and the `individual` variance are both 1 in our sample dataset.
+
+## Random rotation
+
+We can now initialise our random rotation object with `initBatchRandrot`and
+perform random rotation of our statistic of interest with `rotateStat`. 
+We choose the absolute value of the t-statistic of coefficient `tissue` as
+statistic. We use the function `removeBatchEffect` from package `r Biocpkg("limma")`
+for batch effect correction. Note that `removeBatchEffect` here is just a
+placeholder for any "black box batch effect correction procedure".
+
+
+```{r}
+cormat <-  diag(5) %x% cormat
+cormat <- list(cormat, cormat, cormat)
+
+mod1 <- model.matrix(~1+tissue, pdata)
+rr1 <- initBatchRandrot(Y = edata, X = mod1, coef.h = 2, batch = pdata$batch,
+                        cormat = cormat)
+
+statistic <- function(Y, batch, mod, df1){
+  # Batch effect correction
+  Y <- limma::removeBatchEffect(Y, batch = batch, design = mod)
+  
+  apply(Y, 1, function(j){
+    df1$d1 <- j
+    me0 <- nlme::lme(d1 ~ 1, data = df1, random = ~1|individual, method = "ML")
+    me1 <- nlme::lme(d1 ~ tissue, data = df1, random = ~1|individual, method = "ML")
+    
+    abs(coef(me1)[1,2] / (sqrt(vcov(me1)[2,2])))
+  })
+  
+}
+
+rs1 <- rotateStat(initialised.obj = rr1, R = 4, statistic = statistic, 
+                  batch = pdata$batch, mod = mod1, df1 = df1, parallel = TRUE)
+
+p1 <- pFdr(rs1)
+
+hist(p1, freq = FALSE); abline(h = 1, lty = 2, lwd = 2, col = "blue")
+qqunif(p1)
+```
+
+As expected, the p-value is roughly uniformly distributed.
 
 # Session info
 

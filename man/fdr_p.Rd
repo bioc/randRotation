@@ -34,7 +34,7 @@
 \item{na.rm}{\code{logical}. Should missing values be removed ?}
 
 \item{ref.vector}{Reference vector defining at which grid points of \code{s0}
-and \code{stats} the FDRs are approximated. All other points are
+and (\code{stats}) the FDRs are approximated. All other points are
 approximated by spline interpolation. NAs are removed from ref.vector}
 
 \item{method}{A p-value or FDR adjustment method, see

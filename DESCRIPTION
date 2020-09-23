@@ -1,6 +1,6 @@
 Package: randRotation
 Title: Random Rotation Methods for High Dimensional Data with Batch Structure
-Version: 1.1.0
+Version: 1.1.1
 Authors@R: 
     person(given = "Peter",
            family = "Hettegger",
@@ -21,7 +21,7 @@ Imports:
     utils,
     stats,
     Rdpack (>= 0.7)
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
 Suggests: 
     knitr,
     BiocParallel,

@@ -22,7 +22,9 @@ matrix without the batch variable. A warning is generated if
 
 \item{coef.h}{single integer or vector of integers specifying the "hypothesis
 coefficients" (\code{H0} coefficients). \code{coef.h} should correspond to
-the last columns in \code{X} (see \code{Details}). By default, all
+the last columns in \code{X} (see \code{Details}). If available,
+\code{attr(X, "coef.h")} is used, see
+\code{\link[randRotation:contrastModel]{contrastModel}}. By default, all
 coefficients are set as \code{H0} coefficients. If \code{coef.h} is set
 \code{-1}, no coefficient is set as \code{H0} coefficient.}
 
