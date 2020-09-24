@@ -3,7 +3,7 @@ title: "Random Rotation Package Introduction"
 author: "Peter Hettegger"
 date: "`r Sys.Date()`"
 output:
-  BiocStyle::html_document:
+  BiocStyle::pdf_document:
     toc: TRUE
     fig_width: 4.7
     fig_height: 4
