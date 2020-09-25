@@ -70,6 +70,7 @@ mapping <- function(Y, batch, mod) {
   limma::removeBatchEffect(x = Y, batch = batch, design = mod)
 }
 
-dfs <- df_estimate(edata, features = 1, mapping = mapping, batch = pdata$batch, mod = mod1)
-dfs
+#The following 2 lines were commented out, as df_estimate() is deprecated.
+#dfs <- df_estimate(edata, features = 1, mapping = mapping, batch = pdata$batch, mod = mod1)
+#dfs
 }

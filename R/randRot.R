@@ -1194,8 +1194,9 @@ randpermut <- function(n){
 #'   limma::removeBatchEffect(x = Y, batch = batch, design = mod)
 #' }
 #'
-#' dfs <- df_estimate(edata, features = 1, mapping = mapping, batch = pdata$batch, mod = mod1)
-#' dfs
+#' #The following 2 lines were commented out, as df_estimate() is deprecated.
+#' #dfs <- df_estimate(edata, features = 1, mapping = mapping, batch = pdata$batch, mod = mod1)
+#' #dfs
 
 df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., delta = sqrt(.Machine$double.eps))
 {
