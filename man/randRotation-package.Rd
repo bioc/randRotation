@@ -6,9 +6,8 @@
 \alias{randRotation-package}
 \title{randRotation: Random Rotation Methods for High Dimensional Data with Batch Structure}
 \description{
-A collection of methods for performing random orthogonal transformations (random rotations) on high-dimensional data (e.g. microarray or RNA-seq data) with batch structure.
-    The random rotation approach allows exact testing of dependent test statistics with linear models following arbitrary, particularly non-linear, batch effect correction methods.
-    The package further provides methods for estimating the local degrees of freedom of data mappings.
+A collection of methods for performing random rotations on high-dimensional, normally distributed data (e.g. microarray or RNA-seq data) with batch structure.
+    The random rotation approach allows exact testing of dependent test statistics with linear models following arbitrary (also non-linear) batch effect correction methods.
 }
 \details{
 Please refer to the package vignette for further details on usage and for
