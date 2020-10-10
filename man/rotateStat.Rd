@@ -51,7 +51,7 @@ including \code{weights}, \code{X} etc. need to be provided to
 \code{statistic}. See also package vignette and \code{Examples}.
 
 Parallel processing is implemented with the BiocParallel package of Bioconductor.
-The default argument\code{\link[BiocParallel:register]{BiocParallel::bpparam()}} for \code{BPPARAM}
+The default argument \code{\link[BiocParallel:register]{BiocParallel::bpparam()}} for \code{BPPARAM}
 returns the registered default backend.
 See package documentation for further information and usage options.
 If \code{parallel = TRUE} the function calls in \code{statistic} need to be called explicitly

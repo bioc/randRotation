@@ -79,8 +79,7 @@ rr <- initBatchRandrot(Y = edata, X = mod1, coef.h = 2, batch = pdata$batch)
 ```
 
 Now we define the data analysis pipeline that should be run on the original dataset and on the rotated dataset.
-Here we include as first step (I) our batch effect correction routine `ComBat` (`r Biocpkg("sva")` package) and as second step (II) we obtain
-the coefficient of interest from the linear model fit.
+Here we include as first step (I) our batch effect correction routine `ComBat` (`r Biocpkg("sva")` package) and as second step (II) we obtain the t-values for covariate `phenotype` from the linear model fit.
 
 ```{r}
 statistic <- function(Y, batch, mod){
@@ -88,15 +87,14 @@ statistic <- function(Y, batch, mod){
   Y <- sva::ComBat(dat = Y, batch = batch, mod = mod)
   
   # (II) Linear model fit
-  fit1 <- lm.fit(x = mod, y = t(Y))
-  abs(t(coef(fit1))[,2])
+  fit1 <- limma::lmFit(Y, design = mod)
+  fit1 <- limma::eBayes(fit1)
+  abs(fit1$t[,2])
 }
 ```
 
 Note that larger values of the `statistic` function are considered as more significant
-in the subsequently used `pFdr` function. We thus take the absolute values of the coefficients in order to calculate two-sided (two-tailed) p-values with `pFdr`. We emphasize that we highly recommend using scale independent statistics (pivotal quantities)
-as e.g. t-values instead of parameter estimates (as with `coef`), see also `?randRotation::pFdr`. Nevertheless,
-we use `coef` here in order to avoid bulky function definitions.
+in the subsequently used `pFdr` function. We thus take the absolute values of the coefficients in order to calculate two-sided (two-tailed) p-values with `pFdr`. We emphasize that we highly recommend using scale independent statistics (pivotal quantities) as e.g. t-values instead of parameter estimates (as with `coef`), see also `?randRotation::pFdr`. The explicit function calls like `sva::ComBat` are required if parallel computing is used, see `?randRotation::rotateStat`.
 
 The `rotateStat` function calculates `statistic` on the original (non-rotated) dataset and on
 10 random rotations. `batch` and `mod` are provided as additional parameters to `statistic`.
