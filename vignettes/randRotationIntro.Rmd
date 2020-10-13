@@ -129,20 +129,19 @@ different batch effect correction methods on the statistic of interest.
 **Additional info:** Below, the analysis pipeline is performed without rotation
 for comparison with the previous analyses.
 Following batch effect correction with `ComBat` (`r Biocpkg("sva")` package),
-we obtain p-values from linear fit coefficients as follows:
+we obtain p-values from linear fit coefficients 
+(using the `r Biocpkg("limma")` package) as follows:
 
 ```{r}
-edata.combat <- sva::ComBat(dat = edata, batch = pdata$batch, mod = mod1)
-fit1 <- lm.fit(x = mod1, y = t(edata.combat))
+library(limma)
+library(sva)
 
-# t-statistics
-var.beta <- diag(solve(t(mod1)%*%mod1))
-s2 <- colSums(resid(fit1)^2) / df.residual(fit1)
-t1 <- t(coef(fit1) / sqrt(var.beta)) / sqrt(s2)
+edata.combat <- ComBat(dat = edata, batch = pdata$batch, mod = mod1)
+fit1 <- lmFit(edata.combat, mod1)
+fit1 <- eBayes(fit1)
 
 # P-values from t-statistics
-p.vals.nonrot <- 2*pt(abs(t1), df.residual(fit1), lower.tail = FALSE)
-p.vals.nonrot <- p.vals.nonrot[,2]
+p.vals.nonrot <- topTable(fit1, coef = 2, number = Inf, sort.by="none")$P.Value
 
 hist(p.vals.nonrot, col = "lightgreen");abline(h = 100, col = "blue", lty = 2)
 qqunif(p.vals.nonrot)
