@@ -30,10 +30,9 @@ resampling based false-discovery-rates (FDRs) for rotated statistics from a
 \details{
 Larger values of obj$s0 are considered more significant when
   compared to the empirical distribution. E.g. for calculation of resampling
-  based p-values (with \code{pooled = FALSE}) we in principle use \code{p.val
-  <- rowMeans(obj$stats >= obj$s0)}. We take \code{>=} instead of \code{>}
-  when comparing rotated statistics against non-rotated statistics, as this
-  is safer for discrete statistics.
+  based p-values (with \code{pooled = FALSE}) we in principle use
+  \code{p.val <- (rowSums(obj$stats >= obj$s0)+1)/(ncol(obj$stats)+1)} according to
+  \insertCite{Phipson2010}{randRotation}.
 
   \code{method = "fdr.q"} and \code{method = "fdr.qu"} are resampling based
   fdr estimates and can only be used with \code{pooled = TRUE}. \code{method

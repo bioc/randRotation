@@ -29,7 +29,7 @@ test_that("Test execution of rotateStat (including parallel computation mode), p
                       parallel = FALSE)
 
 
-  expect_equal(sort(pFdr(res1))[1:10], c(0.0047,0.0096,0.0143,0.0198,0.0286,0.0293,0.0324,0.0366,0.0429,0.0474), tolerance = 1e-7)
+  expect_equal(sort(pFdr(res1))[1:10], c(0.00479952, 0.00969903, 0.01439856, 0.01989801, 0.02869713, 0.02939706, 0.03249675, 0.03669633, 0.04299570, 0.04749525), tolerance = 1e-7)
   expect_equal(sort(pFdr(res1, "fdr.q"))[1:10], c(0.4700000,0.9600000,0.9715805,0.9936457,0.9996935,0.9999904,0.9999931,0.9999982,0.9999998,0.9999999), tolerance = 1e-7)
   expect_equal(sort(pFdr(res1, "fdr.qu"))[1:10], c(0.4700000,0.9600000,0.9715805,0.9936457,0.9996935,0.9999904,0.9999931,0.9999982,0.9999998,0.9999999), tolerance = 1e-7)
 

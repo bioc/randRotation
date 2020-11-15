@@ -1318,8 +1318,8 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
     stop("Methods \"fdr.q\" and \"fdr.qu\" can only be used with pooled = TRUE")
 
   if(pooled == "FALSE"){
-    res <- pmax(rowMeans(stats >= s0, na.rm = na.rm), 1/rowSums(!is.na(stats)),
-                na.rm = na.rm)
+    ### The +1 are according to (Phipson and Smyth 2010).
+    res <- (rowSums(stats >= s0, na.rm = na.rm)+1)/(rowSums(!is.na(stats))+1)
     res <- p.adjust(p = res, method = method)
   } else {
 
@@ -1331,14 +1331,17 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
       if(na.rm == FALSE && any(is.na(stats))){
         #### Calculating p-values with "stats" containing NAs and "na.rm =
         #### FALSE" results in only NAs
-        warning("NAs found in rotated stats.")
+        warning("NAs found in rotated stats, but na.rm = FALSE.")
         res <- s0
         res[] <- NA
       } else {
         ### The "-" in ecdf and it's argument is necessary in order that the
         ### function behaves correctly for discrete statistics (i.e. in order
         ### that it is equivalent to ">=" instead of ">")
-        ps <- pmax(ecdf(x = -stats)(-s0), 1/sum(!is.na(stats)))
+        ### The solution using ecdf is faster than iterating over all s0.
+        ### The m and the +1 are according to (Phipson and Smyth 2010).
+        m <- sum(!is.na(stats))
+        ps <- (((ecdf(x = -stats)(-s0)) * m) + 1) / (m+1)
         res <- p.adjust(p = ps, method = method)
       }
     }
@@ -1371,10 +1374,9 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
 #' @seealso \code{\link[randRotation:rotateStat]{rotateStat}}
 #' @details Larger values of obj$s0 are considered more significant when
 #'   compared to the empirical distribution. E.g. for calculation of resampling
-#'   based p-values (with \code{pooled = FALSE}) we in principle use \code{p.val
-#'   <- rowMeans(obj$stats >= obj$s0)}. We take \code{>=} instead of \code{>}
-#'   when comparing rotated statistics against non-rotated statistics, as this
-#'   is safer for discrete statistics.
+#'   based p-values (with \code{pooled = FALSE}) we in principle use
+#'   \code{p.val <- (rowSums(obj$stats >= obj$s0)+1)/(ncol(obj$stats)+1)} according to
+#'   \insertCite{Phipson2010}{randRotation}.
 #'
 #'   \code{method = "fdr.q"} and \code{method = "fdr.qu"} are resampling based
 #'   fdr estimates and can only be used with \code{pooled = TRUE}. \code{method
