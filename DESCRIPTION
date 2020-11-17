@@ -1,6 +1,6 @@
 Package: randRotation
 Title: Random Rotation Methods for High Dimensional Data with Batch Structure
-Version: 1.3.1
+Version: 1.3.2
 Authors@R: 
     person(given = "Peter",
            family = "Hettegger",
@@ -8,7 +8,7 @@ Authors@R:
            email = "p.hettegger@gmail.com",
            comment = c(ORCID = "0000-0001-8557-588X"))
 Description: A collection of methods for performing random rotations on high-dimensional, normally distributed data (e.g. microarray or RNA-seq data) with batch structure.
-    The random rotation approach allows exact testing of dependent test statistics with linear models following arbitrary (also non-linear) batch effect correction methods.
+    The random rotation approach allows exact testing of dependent test statistics with linear models following arbitrary batch effect correction methods.
 License: GPL-3
 biocViews: Software, Sequencing, BatchEffect, BiomedicalInformatics, RNASeq, Preprocessing, Microarray, DifferentialExpression, GeneExpression, Genetics, MicroRNAArray, Normalization, StatisticalMethod
 Encoding: UTF-8
