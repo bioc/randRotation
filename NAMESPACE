@@ -2,7 +2,6 @@
 
 export(X_decomp)
 export(contrastModel)
-export(df_estimate)
 export(initBatchRandrot)
 export(initRandrot)
 export(pFdr)

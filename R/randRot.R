@@ -1139,91 +1139,9 @@ randpermut <- function(n){
 }
 
 
-
-
-#' Estimation of degrees of freedom (df) for an arbitrary mapping function
-#'
-#' This function has been deprecated and will be defunct in the next release !
-#' This function estimates the local degrees of freedom (df) of mapped data for an arbitrary mapping function.
-#' The estimation is done for a set of selected features.
-#'
-#' @param data A numerical data matrix.
-#' @param features Features for which the df should be estimated (default \code{sample(nrow(data),10)}).
-#' @param mapping A mapping function that takes a matrix \code{features x samples} dimensions as first argument and returns a matrix of
-#' mapped data with the same dimensions. Any further arguments can be passed to \code{mapping} through \code{...}.
-#' @param ... Additional arguments passed to \code{mapping}.
-#' @param delta A numeric delta for the finite differences (default \code{sqrt(.Machine$double.eps)}).
-#'
-#' @return A named numeric vector of estimated df for each feature. Names correspond to \code{features}.
-#' @export
-#'
-#' @details
-#' The df are estimated as the rank of the local Jacobian matrix. It is thus the rank of the local linear approximation of the mapping function,
-#' where linearisation is performed around \code{data}. The Jacobian matrix \code{J} for a certain feature \code{j} is calculated with finite differences:
-#'
-#' \code{data2 <- data}
-#'
-#' \code{data2[j,i] <- data2[j,i] + delta}
-#'
-#' \code{J[,i] = (mapping(data2, ...) - mapping(data,...))/delta}
-#'
-#' In the current implementation, the rank of \code{J} is calculated as sum of the singular values of \code{J}.
-#' So for each feature, a SVD decomposition of the \code{ncol(data) x ncol(data)} matrix \code{J} is calculated.
-#'
-#' This function should be considered experimental due to the common numerical issues associated with
-#' finite differences and numerical calculation of matrix ranks. So always check results for plausibility.
-#'
-#' An estimation of df is generated for each feature specified in \code{features}.
-#' @examples
-#' #set.seed(0)
-#'
-#' # Dataframe of phenotype data (sample information)
-#' # We simulate 2 sample classes processed in 3 batches
-#' pdata <- data.frame(batch = rep(1:3, c(10,10,10)),
-#'                    phenotype = rep(c("Control", "Cancer"), c(5,5)))
-#' features <- 100
-#'
-#' # Matrix with random gene expression data
-#' edata <- matrix(rnorm(features * nrow(pdata)), features)
-#' rownames(edata) <- paste("feature", 1:nrow(edata))
-#'
-#' mod1 <- model.matrix(~phenotype, pdata)
-#'
-#' # The limma::removeBatchEffect function is a commonly used function for batch effect correction:
-#' mapping <- function(Y, batch, mod) {
-#'   limma::removeBatchEffect(x = Y, batch = batch, design = mod)
-#' }
-#'
-#' #The following 2 lines were commented out, as df_estimate() is deprecated.
-#' #dfs <- df_estimate(edata, features = 1, mapping = mapping, batch = pdata$batch, mod = mod1)
-#' #dfs
-
 df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., delta = sqrt(.Machine$double.eps))
 {
-  .Deprecated()
-  if(!is.matrix(data) || !is.numeric(data))stop("data must be a numeric matrix.")
-  if(abs(delta) == 0) stop("abs(delta) must be > 0.")
-
-  m <- mapping(data, ...)
-
-  n <- ncol(data)
-  dat2 <- data
-
-  dfs <- vapply(features, function(feature){
-
-    # Calculate Jacobian matrix with finite differences
-    jacobi <- vapply(seq_len(n), function(i){
-      dat2[feature,i] <- dat2[feature,i] + delta
-      diff <- mapping(dat2, ...)[feature,] - m[feature,]
-      dat2[feature,i] <- dat2[feature,i] - delta
-      diff / delta
-    }, data[1,])
-
-    sum(svd(jacobi,0,0)$d) # df are the rank of the Jacobian matrix
-  }, 1)
-
-  names(dfs) <- features
-  dfs
+  .Defunct()
 }
 
 
