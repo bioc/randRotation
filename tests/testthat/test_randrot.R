@@ -25,7 +25,7 @@ test_that("Random rotation gives same coefficients if all coefs are set as coef.
 
   weights = matrix(runif(length(edata))+0.2, nrow = nrow(edata))
 
-  rr1 = initRandrot(Y = edata, X = mod1, coef.h = -1, weights = weights)
+  rr1 = suppressWarnings(initRandrot(Y = edata, X = mod1, coef.h = -1, weights = weights))
 
   coefs <- vapply(seq_len(features),
                   function(i) coef(lm.wfit(x = mod1, y = edata[i,], w = weights[i,])),
@@ -72,7 +72,7 @@ test_that("Random rotation gives same coefficients if all coefs are set as coef.
   # warning("Partitioned design matrix X[,coef.d] does not have full rank.")
   mod1 <- mod1[,c(1,2,4)]
 
-  rr1 <- initRandrot(Y = t(df1$feature1), X = mod1, coef.h = ncol(mod1), weights = t(df1$w))
+  rr1 <- suppressWarnings(initRandrot(Y = t(df1$feature1), X = mod1, coef.h = ncol(mod1), weights = t(df1$w)))
 
   edata.rot <- randrot(rr1)
 

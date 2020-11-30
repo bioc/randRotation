@@ -76,7 +76,7 @@ Larger values of obj$s0 are considered more significant when
   object (see parameter \code{initialised.obj} in
   \code{\link[randRotation:rotateStat]{rotateStat}}), a warning is displayed.
   The correlation structure (dependence structure) of linear model
-  coefficients between different features is not preserved if
+  coefficients between different features is not generally preserved if
   different weights are used for different features.
   Methods \code{fdr.q} and \code{fdr.qu} rely on preserved correlation
   structure of dependent statistics and thus should not be used if statistics

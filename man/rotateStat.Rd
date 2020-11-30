@@ -18,11 +18,11 @@ rotateStat(
 
 \item{R}{The number of resamples/rotations. Single \code{numeric} larger than 1.}
 
-\item{statistic}{A function which takes a data matrix (same dimensions as \code{Y} - see also \code{\link[randRotation:initRandrot]{initRandrot}}) as first argument and returns a statistic of interest. Any further arguments are passed to it by \code{...}.
+\item{statistic}{A function which takes a data matrix (same dimensions as \code{Y} - see also \code{\link[randRotation:initRandrot]{initRandrot}}) as first argument and returns a statistic of interest. Any further arguments are passed to it with the \code{...} argument.
 We highly recommend using pivotal quantities as \code{statistic} if possible (see also \code{Details} in \code{\link[randRotation:pFdr]{pFdr}}).
 Note that \code{\link[randRotation:pFdr]{pFdr}} considers larger values of statistics as more significant, so one-tailed tests may require reversal of the sign and two-tailed tests may require taking absolute values, see \code{Examples}.
 The results of \code{statistic} for each resample are finally combined with \code{as.matrix} and \code{cbind}, so ensure that \code{statistic} returns either a vector or a matrix.
-Results with multiple columns are possible and handled adequately in subsequent functions (e.g. \code{\link[randRotation:pFdr]{pFdr}}).}
+Results with multiple columns are possible and handled adequately in subsequent functions (e.g. \code{\link[randRotation:pFdr]{pFdr}}). Note that \code{statistic} must not necessarily be of the same length as \code{nrow(Y)}, but can also be e.g. a summary statistic of genes (like in gene set testing).}
 
 \item{...}{Further named arguments for \code{statistic} which are passed unchanged each time it is called.
 Avoid partial matching to arguments of \code{rotateStat}. See also the \code{Examples}.}

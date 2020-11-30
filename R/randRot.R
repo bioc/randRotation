@@ -123,10 +123,13 @@ initRandrot <- function(Y = NULL, X = NULL, coef.h = NULL, weights = NULL,
   }
 
 
-  if(!is.null(weights)) return(
-    initRandrotW(Y = Y, X = X, coef.h = coef.h, coef.d = coef.d,
+  if(!is.null(weights)) {
+    warning("Dependence structure is not generally preserved if weights are used (see ?pFdr).")
+    return(
+      initRandrotW(Y = Y, X = X, coef.h = coef.h, coef.d = coef.d,
                    weights = weights, cormat = cormat, cholCinv = cholCinv,
                    tcholC = tcholC))
+  }
 
   #### (Whitening) transformation of X and Y
   if(!is.null(cormat)){
@@ -850,7 +853,7 @@ setMethod("randrot", "initRandrotW",
               object$decomp.list[[i]]$Xhe %*% R.Xhe.Y.w[,i,drop = FALSE]
             }, numeric(ncol(object$Yd))))
 
-            # de-withening of Y.w
+            # de-whitening of Y.w
             if(is.null(object$cormat))
               (1/object$w) *  (object$Yd + Yhe)
             else
@@ -883,11 +886,11 @@ setMethod("randrot", "initBatchRandrot",
 #'
 #' @param initialised.obj An initialised random rotation object as returned by \code{\link[randRotation:initRandrot]{initRandrot}} and \code{\link[randRotation:initRandrot]{initBatchRandrot}}.
 #' @param R The number of resamples/rotations. Single \code{numeric} larger than 1.
-#' @param statistic A function which takes a data matrix (same dimensions as \code{Y} - see also \code{\link[randRotation:initRandrot]{initRandrot}}) as first argument and returns a statistic of interest. Any further arguments are passed to it by \code{...}.
+#' @param statistic A function which takes a data matrix (same dimensions as \code{Y} - see also \code{\link[randRotation:initRandrot]{initRandrot}}) as first argument and returns a statistic of interest. Any further arguments are passed to it with the \code{...} argument.
 #' We highly recommend using pivotal quantities as \code{statistic} if possible (see also \code{Details} in \code{\link[randRotation:pFdr]{pFdr}}).
 #' Note that \code{\link[randRotation:pFdr]{pFdr}} considers larger values of statistics as more significant, so one-tailed tests may require reversal of the sign and two-tailed tests may require taking absolute values, see \code{Examples}.
 #' The results of \code{statistic} for each resample are finally combined with \code{as.matrix} and \code{cbind}, so ensure that \code{statistic} returns either a vector or a matrix.
-#' Results with multiple columns are possible and handled adequately in subsequent functions (e.g. \code{\link[randRotation:pFdr]{pFdr}}).
+#' Results with multiple columns are possible and handled adequately in subsequent functions (e.g. \code{\link[randRotation:pFdr]{pFdr}}). Note that \code{statistic} must not necessarily be of the same length as \code{nrow(Y)}, but can also be e.g. a summary statistic of genes (like in gene set testing).
 #' @param ... Further named arguments for \code{statistic} which are passed unchanged each time it is called.
 #' Avoid partial matching to arguments of \code{rotateStat}. See also the \code{Examples}.
 #' @param parallel \code{logical} if parallel computation should be performed, see details for use of parallel computing.
@@ -1338,7 +1341,7 @@ df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., de
 #'   object (see parameter \code{initialised.obj} in
 #'   \code{\link[randRotation:rotateStat]{rotateStat}}), a warning is displayed.
 #'   The correlation structure (dependence structure) of linear model
-#'   coefficients between different features is not preserved if
+#'   coefficients between different features is not generally preserved if
 #'   different weights are used for different features.
 #'   Methods \code{fdr.q} and \code{fdr.qu} rely on preserved correlation
 #'   structure of dependent statistics and thus should not be used if statistics
