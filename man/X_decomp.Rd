@@ -30,7 +30,7 @@ non-Null-Hypothesis columns) and \code{Xhe} correspond to all other columns
 No argument checks are performed for reasons
 of performance as this function is called frequently by
 \code{\link[randRotation:initRandrot]{initRandrot}} when weights are used.
-See \insertCite{Langsrud2005}{randRotation} for further details.
+See \insertCite{Hettegger2021}{randRotation} and \insertCite{Langsrud2005}{randRotation} for further details.
 }
 \examples{
 design <- cbind(1, rep(0:1, 5))

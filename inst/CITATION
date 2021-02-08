@@ -1,0 +1,15 @@
+citHeader("To cite the 'randRotation' package in publications use:")
+
+vers <- paste("R package 'randRotation' version", meta$Version)
+
+bibentry(bibtype="Article",
+    author = c(person("Peter", "Hettegger"),
+                person("Klemens", "Vierlinger"),
+                person("Andreas", "Weinhaeusel")),
+    doi = "10.1093/bioinformatics/btab063",
+    journal = "Bioinformatics",
+    note = vers,
+    title = "Random rotation for identifying differentially expressed genes with linear models following batch effect correction",
+    url = "https://doi.org/10.1093/bioinformatics/btab063",
+    year = 2021
+)

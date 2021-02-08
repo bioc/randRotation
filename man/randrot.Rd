@@ -43,9 +43,9 @@ return for efficiency purposes. Please consider that, if you e.g. use
 the design matrix \code{X}, \code{weights} etc. to subsequent analyses. See
 the example in \code{\link[randRotation:rotateStat]{rotateStat}}.
 
-Details on the calculation of a rotated datset are given in
-\code{\link[randRotation:initRandrot]{initRandrot}} and
-\insertCite{Langsrud2005}{randRotation}.
+Details on the calculation of a rotated dataset are given in
+\code{\link[randRotation:initRandrot]{initRandrot}},
+\insertCite{Langsrud2005}{randRotation} and \insertCite{Hettegger2021}{randRotation}.
 }
 \examples{
 # For further examples see '?rotateStat' and package vignette.

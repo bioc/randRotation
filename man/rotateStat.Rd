@@ -45,6 +45,9 @@ calculates a statistic on the data. The statistic function thereby takes the
 a matrix \code{Y} as first argument. Any further arguments are passed to it
 by \code{...}.
 
+Together with \code{\link[randRotation:pFdr]{pFdr}}, this function implements
+the \code{workflow} described in \insertCite{Hettegger2021}{randRotation}.
+
 Be aware that only data is rotated (see also
 \code{\link[randRotation:randrot]{randrot}}), so any additional information
 including \code{weights}, \code{X} etc. need to be provided to
@@ -99,6 +102,9 @@ res1 <- rotateStat(initialised.obj = init1,
                     batch = pdata$batch, mod = mod1, coef = 2)
 
 hist(pFdr(res1))
+}
+\references{
+\insertAllCited{}
 }
 \author{
 Peter Hettegger
