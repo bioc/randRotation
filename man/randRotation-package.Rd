@@ -12,7 +12,11 @@ A collection of methods for performing random rotations on high-dimensional, nor
 \details{
 Please refer to the package vignette for further details on usage and for
 a "quick start". \code{\link[randRotation:rotateStat]{rotateStat}} is
-basically the central function of the package.
+the central function of the package. Methods are described in
+\insertCite{Hettegger2021}{randRotation}.
+}
+\references{
+\insertAllCited{}
 }
 \seealso{
 Useful links:
