@@ -78,14 +78,14 @@ An initialised
 Initialization of a linear model for subsequent generation of randomly
 rotated data (\code{\link[randRotation:randrot]{randrot}}) associated with
 the null hypothesis \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0}.
-Basics of rotation tests are found in
+Basics of rotation tests are found in \insertCite{Hettegger2021}{randRotation} and
 \insertCite{Langsrud2005}{randRotation}.
 }
 \details{
 This function performs basic initial checks and preparatory calculations for
-random rotation data generation, see \insertCite{Langsrud2005}{randRotation}.
+random rotation data generation.
 Nomenclature of variables is mainly as in
-\insertCite{Langsrud2005}{randRotation}. See also package vignette for
+\insertCite{Langsrud2005}{randRotation} and \insertCite{Hettegger2021}{randRotation}. See also package vignette for
 application examples.
 
 \code{Y} can also be a list with elements \code{E}, \code{design} and
@@ -121,7 +121,7 @@ using \code{weights} and/or \code{cormat}, try the routine without using
 
 The following section provides a brief summary how rotations are calculated.
 A more general introduction is given in
-\insertCite{Langsrud2005}{randRotation} For reasons of readability, we omit
+\insertCite{Langsrud2005}{randRotation}. For reasons of readability, we omit
 writing \code{\%*\%} for matrix multiplication and write \code{*} for
 transposed matrix. The rotation is done by multiplying the \code{features x
 samples} data matrix \code{Y} with the transpose of the restricted random

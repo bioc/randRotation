@@ -1,8 +1,10 @@
 #' @details
 #' Please refer to the package vignette for further details on usage and for
 #' a "quick start". \code{\link[randRotation:rotateStat]{rotateStat}} is
-#' basically the central function of the package.
-#'@importFrom Rdpack reprompt
+#' the central function of the package. Methods are described in
+#' \insertCite{Hettegger2021}{randRotation}.
+#' @importFrom Rdpack reprompt
+#' @references \insertAllCited{}
 "_PACKAGE"
 
 
@@ -30,7 +32,7 @@
 #' No argument checks are performed for reasons
 #' of performance as this function is called frequently by
 #' \code{\link[randRotation:initRandrot]{initRandrot}} when weights are used.
-#' See \insertCite{Langsrud2005}{randRotation} for further details.
+#' See \insertCite{Hettegger2021}{randRotation} and \insertCite{Langsrud2005}{randRotation} for further details.
 #'
 #' @references \insertAllCited{}
 #' @author Peter Hettegger
@@ -247,9 +249,8 @@ initRandrotW <- function(Y, X, coef.h, coef.d, weights, cormat,
 #' Initialization of a linear model for subsequent generation of randomly
 #' rotated data (\code{\link[randRotation:randrot]{randrot}}) associated with
 #' the null hypothesis \eqn{H_{0}: \beta_{coef.h} = 0}{H0: \beta_coef.h = 0}.
-#' Basics of rotation tests are found in
+#' Basics of rotation tests are found in \insertCite{Hettegger2021}{randRotation} and
 #' \insertCite{Langsrud2005}{randRotation}.
-#'
 #'
 #' @param Y a data matrix with \code{features x samples} dimensions or a list
 #'   with elements \code{E}, \code{design} and \code{weights} (see
@@ -288,9 +289,9 @@ initRandrotW <- function(Y, X, coef.h, coef.d, weights, cormat,
 #' @details
 #'
 #' This function performs basic initial checks and preparatory calculations for
-#' random rotation data generation, see \insertCite{Langsrud2005}{randRotation}.
+#' random rotation data generation.
 #' Nomenclature of variables is mainly as in
-#' \insertCite{Langsrud2005}{randRotation}. See also package vignette for
+#' \insertCite{Langsrud2005}{randRotation} and \insertCite{Hettegger2021}{randRotation}. See also package vignette for
 #' application examples.
 #'
 #' \code{Y} can also be a list with elements \code{E}, \code{design} and
@@ -326,7 +327,7 @@ initRandrotW <- function(Y, X, coef.h, coef.d, weights, cormat,
 #'
 #' The following section provides a brief summary how rotations are calculated.
 #' A more general introduction is given in
-#' \insertCite{Langsrud2005}{randRotation} For reasons of readability, we omit
+#' \insertCite{Langsrud2005}{randRotation}. For reasons of readability, we omit
 #' writing \code{\%*\%} for matrix multiplication and write \code{*} for
 #' transposed matrix. The rotation is done by multiplying the \code{features x
 #' samples} data matrix \code{Y} with the transpose of the restricted random
@@ -768,9 +769,9 @@ setMethod("weights", "initBatchRandrot",
 #' the design matrix \code{X}, \code{weights} etc. to subsequent analyses. See
 #' the example in \code{\link[randRotation:rotateStat]{rotateStat}}.
 #'
-#' Details on the calculation of a rotated datset are given in
-#' \code{\link[randRotation:initRandrot]{initRandrot}} and
-#' \insertCite{Langsrud2005}{randRotation}.
+#' Details on the calculation of a rotated dataset are given in
+#' \code{\link[randRotation:initRandrot]{initRandrot}},
+#' \insertCite{Langsrud2005}{randRotation} and \insertCite{Hettegger2021}{randRotation}.
 #'
 #' @author Peter Hettegger
 #' @references \insertAllCited{}
@@ -907,6 +908,9 @@ setMethod("randrot", "initBatchRandrot",
 #' a matrix \code{Y} as first argument. Any further arguments are passed to it
 #' by \code{...}.
 #'
+#' Together with \code{\link[randRotation:pFdr]{pFdr}}, this function implements
+#' the \code{workflow} described in \insertCite{Hettegger2021}{randRotation}.
+#'
 #' Be aware that only data is rotated (see also
 #' \code{\link[randRotation:randrot]{randrot}}), so any additional information
 #' including \code{weights}, \code{X} etc. need to be provided to
@@ -922,7 +926,7 @@ setMethod("randrot", "initBatchRandrot",
 #' examples in the package vignette.
 #'
 #' @author Peter Hettegger
-#'
+#' @references \insertAllCited{}
 #' @examples
 #' #set.seed(0)
 #'
