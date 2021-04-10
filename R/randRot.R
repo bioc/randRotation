@@ -1445,6 +1445,7 @@ pFdr <- function(obj, method = "none", pooled = TRUE, na.rm = FALSE, beta = 0.05
 #' @param pch Point symbol, see \code{\link[graphics:par]{par}}.
 #' @param xlab Label for the x axis.
 #' @param ylab Label for the y axis.
+#' @param plot.it \code{logical} whether the result should be plotted.
 #' @param ... Graphical parameters forwarded to \code{\link[stats:qqnorm]{qqplot}}
 #'
 #' @return A list of \code{x} and {y} coordinates, as in \code{\link[stats:qqnorm]{qqplot}}.
@@ -1453,15 +1454,15 @@ pFdr <- function(obj, method = "none", pooled = TRUE, na.rm = FALSE, beta = 0.05
 #' @examples
 #' qqunif(runif(100))
 qqunif <- function(ps, log = "xy", pch = 20, xlab = "theoretical quantiles",
-ylab = "sample quantiles", ...){
+ylab = "sample quantiles", plot.it = TRUE, ...){
 
   if(any(!is.finite(ps) | ps > 1 | ps < 0))
     stop("Values of ps must be between 0 and 1.")
 
   ## Q-Q plot for Unif data against true theoretical distribution
   res <- qqplot(ppoints(ps), ps, main = expression("Q-Q plot for" ~~ {Unif(0,1)}),
-         log = log, pch = pch, xlab = xlab, ylab = ylab, ...)
-  abline(0,1, col = 2,lwd=2,lty=2)
+         log = log, pch = pch, xlab = xlab, ylab = ylab, plot.it = plot.it, ...)
+  if(plot.it)abline(0, 1, col = 2, lwd=2, lty=2)
   invisible(res)
 }
 

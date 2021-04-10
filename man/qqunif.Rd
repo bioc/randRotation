@@ -10,6 +10,7 @@ qqunif(
   pch = 20,
   xlab = "theoretical quantiles",
   ylab = "sample quantiles",
+  plot.it = TRUE,
   ...
 )
 }
@@ -25,6 +26,8 @@ scale. Either \code{""}, \code{"x"}, \code{"y"} or \code{"xy"}.}
 \item{xlab}{Label for the x axis.}
 
 \item{ylab}{Label for the y axis.}
+
+\item{plot.it}{\code{logical} whether the result should be plotted.}
 
 \item{...}{Graphical parameters forwarded to \code{\link[stats:qqnorm]{qqplot}}}
 }
