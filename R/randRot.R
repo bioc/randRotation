@@ -1146,11 +1146,6 @@ randpermut <- function(n){
 }
 
 
-df_estimate <- function(data, features = sample(nrow(data), 10), mapping,..., delta = sqrt(.Machine$double.eps))
-{
-  .Defunct()
-}
-
 
 #' Internal functions for p-value and FDR estimation
 #'
