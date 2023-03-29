@@ -1189,8 +1189,8 @@ randpermut <- function(n){
 
   qu.value <- cummax(qu.value)
 
-
-  approx(spline(ref.vector, qu.value), xout = abs(s0), rule = 2)$y
+  # The pmin is necessary to prevent values > 1 due to approximation
+  pmin(approx(spline(ref.vector, qu.value), xout = abs(s0), rule = 2)$y, 1)
 }
 
 #' @rdname fdr_p
@@ -1222,7 +1222,8 @@ randpermut <- function(n){
   }
   q.value <- rev(cummin(rev(q.value)))
 
-  approx(spline(ref.vector, q.value), xout = abs(s0), rule = 2)$y
+  # The pmin is necessary to prevent values > 1 due to approximation
+  pmin(approx(spline(ref.vector, q.value), xout = abs(s0), rule = 2)$y, 1)
 }
 
 #' @param method A p-value or FDR adjustment method, see

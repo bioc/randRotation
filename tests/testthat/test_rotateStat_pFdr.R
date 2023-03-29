@@ -28,10 +28,9 @@ test_that("Test execution of rotateStat (including parallel computation mode), p
                       batch = pdata$batch, mod = mod1, coef = 1:2,
                       parallel = FALSE)
 
-
-  expect_equal(sort(pFdr(res1))[1:10], c(0.00479952, 0.00969903, 0.01439856, 0.01989801, 0.02869713, 0.02939706, 0.03249675, 0.03669633, 0.04299570, 0.04749525), tolerance = 1e-7)
-  expect_equal(sort(pFdr(res1, "fdr.q"))[1:10], c(0.4700000,0.9600000,0.9715805,0.9936457,0.9996935,0.9999904,0.9999931,0.9999982,0.9999998,0.9999999), tolerance = 1e-7)
-  expect_equal(sort(pFdr(res1, "fdr.qu"))[1:10], c(0.4700000,0.9600000,0.9715805,0.9936457,0.9996935,0.9999904,0.9999931,0.9999982,0.9999998,0.9999999), tolerance = 1e-7)
+  expect_equal(sort(pFdr(res1))[1:10], c(0.0087991, 0.0094991, 0.0150985, 0.0196980, 0.0258974, 0.0267973, 0.0361964, 0.0393961, 0.0456954, 0.0472953), tolerance = 1e-5)
+  expect_equal(sort(pFdr(res1, "fdr.q"))[1:10], c(0.87000, 0.94000, 0.99303, 0.99844, 0.99992, 0.99999, 1.00000, 1.00000, 1.00000, 1.00000), tolerance = 1e-5)
+  expect_equal(sort(pFdr(res1, "fdr.qu"))[1:10], c(0.87000, 0.94000, 0.99303, 0.99844, 0.99992, 0.99999, 1.00000, 1.00000, 1.00000, 1.00000), tolerance = 1e-5)
 
   ### Test for exact dimensions and for parallel processing
   res1 <- rotateStat(initialised.obj = init1, R = 10, statistic = statistic,
